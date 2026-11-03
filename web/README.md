@@ -40,6 +40,25 @@ Refresh the fallback from the live API. Plan T26 runs this before launch:
 pnpm snapshot
 ```
 
+## Contact form
+
+`src/components/ContactForm.astro` posts JSON to `${API_URL}/api/contact`. Spec section 6.
+
+| Variable | Where | Purpose |
+|---|---|---|
+| `PUBLIC_TURNSTILE_SITE_KEY` | Pages env, Production | Turnstile site key. Public. `pnpm dev` uses Cloudflare's always-pass test key when unset. |
+
+The form switches to `mailto:` mode in these cases. The send button then opens the visitor's mail app with the message pre-filled.
+
+- The production build has no `PUBLIC_TURNSTILE_SITE_KEY`. The build log prints a warning.
+- `GET /api/health` fails or takes over 5 s when the form nears the viewport.
+- A send fails with a network error, a 5xx, or a 429.
+
+The Turnstile script and the health probe load only when the form is within 400 px of the viewport, or on first focus.
+The `mailto:` address is `CONTACT_EMAIL` in `src/lib/site.ts`.
+
+Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md).
+
 ## Styling
 
 Tokens live in `src/styles/global.css` under `@theme`. Use them as Tailwind utilities, for example `bg-ink-900`, `text-paper`, `border-line`, `text-amber`.

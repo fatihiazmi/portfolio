@@ -1,0 +1,340 @@
+---
+/**
+ * Contact form. Spec section 6. Posts JSON to `${API_URL}/api/contact`.
+ *
+ * Modes:
+ * - online: Turnstile renders, the form posts to the API.
+ * - mailto: the send button opens the visitor's mail app with the message pre-filled.
+ *   Triggers: no site key in the build, `/api/health` fails when the form nears the
+ *   viewport, or a send fails with a network error or a 5xx. Spec section 2.2.
+ *
+ * The Turnstile script and the health probe load only when the form is near the
+ * viewport, so the home page ships no third-party script on first paint.
+ */
+import { API_URL, CONTACT_EMAIL, TURNSTILE_SITE_KEY } from "../lib/site";
+
+if (!TURNSTILE_SITE_KEY) {
+  console.warn("[contact] PUBLIC_TURNSTILE_SITE_KEY is not set. The form builds in mailto mode.");
+}
+
+const budgets = ["<RM10k", "RM10k–50k", "RM50k+", "unsure"] as const;
+const budgetLabels: Record<(typeof budgets)[number], string> = {
+  "<RM10k": "Under RM10k",
+  "RM10k–50k": "RM10k – RM50k",
+  "RM50k+": "Over RM50k",
+  unsure: "Not sure yet",
+};
+const kinds = [
+  { value: "freelance", label: "A project for my organisation" },
+  { value: "hiring", label: "A role I am hiring for" },
+  { value: "other", label: "Something else" },
+] as const;
+
+const field =
+  "mt-2 block w-full border border-line bg-ink-950/70 px-3 py-2 text-paper placeholder:text-muted/70 focus:border-line-strong";
+const label = "font-mono text-xs tracking-wide text-muted uppercase";
+---
+
+<div
+  id="contact-root"
+  class="mt-6 max-w-2xl"
+  data-api={API_URL}
+  data-email={CONTACT_EMAIL}
+  data-sitekey={TURNSTILE_SITE_KEY ?? ""}
+>
+  <noscript>
+    <p class="border border-line bg-ink-800/60 p-4 text-muted">
+      The form needs JavaScript. Email me at
+      <a class="text-amber underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+    </p>
+  </noscript>
+
+  <form id="contact-form" class="grid gap-5" aria-describedby="contact-status">
+    <div class="grid gap-5 sm:grid-cols-2">
+      <label class="block">
+        <span class={label}>Name</span>
+        <input class={field} name="name" type="text" required maxlength="100" autocomplete="name" />
+      </label>
+      <label class="block">
+        <span class={label}>Email</span>
+        <input
+          class={field}
+          name="email"
+          type="email"
+          required
+          maxlength="254"
+          autocomplete="email"
+        />
+      </label>
+    </div>
+
+    <label class="block">
+      <span class={label}>Company <span class="normal-case">(optional)</span></span>
+      <input class={field} name="company" type="text" maxlength="150" autocomplete="organization" />
+    </label>
+
+    <fieldset>
+      <legend class={label}>What is this about?</legend>
+      <div class="mt-2 grid gap-2">
+        {
+          kinds.map((k, i) => (
+            <label class="flex items-center gap-3 border border-line bg-ink-950/40 px-3 py-2 has-checked:border-line-strong">
+              <input
+                type="radio"
+                name="kind"
+                value={k.value}
+                required
+                checked={i === 0}
+                class="accent-amber"
+              />
+              <span>{k.label}</span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <label class="block" data-budget>
+      <span class={label}>Budget <span class="normal-case">(optional)</span></span>
+      <select class={field} name="budget">
+        <option value="">Choose a range</option>
+        {budgets.map((b) => <option value={b}>{budgetLabels[b]}</option>)}
+      </select>
+    </label>
+
+    <label class="block">
+      <span class={label}>Message</span>
+      <textarea
+        class={`${field} min-h-40`}
+        name="message"
+        required
+        minlength="20"
+        maxlength="5000"
+        placeholder="What do you need built, and by when?"></textarea>
+    </label>
+
+    <!-- Honeypot. People never see it. Bots that fill it get a fake success. -->
+    <div class="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
+      <label>
+        Website
+        <input name="website" type="text" tabindex="-1" autocomplete="off" />
+      </label>
+    </div>
+
+    <div data-turnstile class="min-h-[65px]"></div>
+
+    <div class="flex flex-wrap items-center gap-4">
+      <button
+        type="submit"
+        class="bg-amber px-5 py-2.5 font-mono text-sm font-medium text-ink-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+      >
+        <span data-label-online>Send message</span>
+        <span data-label-mailto hidden>Open in my mail app</span>
+      </button>
+      <p data-mailto-note hidden class="text-sm text-muted">
+        The form is offline. Your message opens in your mail app, addressed to
+        <a class="text-amber underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+      </p>
+    </div>
+
+    <p id="contact-status" role="status" aria-live="polite" class="text-sm"></p>
+  </form>
+
+  <div data-thanks hidden tabindex="-1" class="border border-line-strong bg-ink-800/60 p-6">
+    <p class="text-lg font-semibold">Thanks. I reply within 2 working days.</p>
+  </div>
+</div>
+
+<script>
+  type Turnstile = {
+    render(el: HTMLElement, opts: Record<string, unknown>): string;
+    getResponse(id: string): string | undefined;
+    reset(id: string): void;
+  };
+  type Win = Window & { turnstile?: Turnstile };
+
+  const PROBE_TIMEOUT_MS = 5_000;
+  const SEND_TIMEOUT_MS = 20_000;
+  const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+  const root = document.getElementById("contact-root");
+  const form = document.getElementById("contact-form");
+  if (root && form instanceof HTMLFormElement) setup(root, form);
+
+  function setup(root: HTMLElement, form: HTMLFormElement): void {
+    const api = root.dataset.api ?? "";
+    const email = root.dataset.email ?? "";
+    const sitekey = root.dataset.sitekey ?? "";
+    const status = form.querySelector<HTMLElement>("#contact-status")!;
+    const button = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
+    const budget = form.querySelector<HTMLElement>("[data-budget]")!;
+    const budgetSelect = budget.querySelector("select")!;
+    const widgetBox = form.querySelector<HTMLElement>("[data-turnstile]")!;
+    const thanks = root.querySelector<HTMLElement>("[data-thanks]")!;
+
+    let mailtoMode = false;
+    let widgetId: string | undefined;
+    let started = false;
+
+    const say = (text: string, tone: "info" | "error" = "info") => {
+      status.textContent = text;
+      status.className = `text-sm ${tone === "error" ? "text-amber" : "text-muted"}`;
+    };
+
+    const value = (name: string): string => {
+      const el = form.elements.namedItem(name);
+      if (el instanceof RadioNodeList) return el.value;
+      return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement
+        ? el.value.trim()
+        : "";
+    };
+
+    // Budget only for freelance. Spec section 6.
+    const syncBudget = () => {
+      const show = value("kind") === "freelance";
+      budget.hidden = !show;
+      budgetSelect.disabled = !show;
+    };
+    form.addEventListener("change", (e) => {
+      if (e.target instanceof HTMLInputElement && e.target.name === "kind") syncBudget();
+    });
+    syncBudget();
+
+    const enterMailtoMode = (reason: string) => {
+      if (mailtoMode) return;
+      mailtoMode = true;
+      console.warn(`[contact] mailto mode: ${reason}`);
+      form.querySelector<HTMLElement>("[data-label-online]")!.hidden = true;
+      form.querySelector<HTMLElement>("[data-label-mailto]")!.hidden = false;
+      form.querySelector<HTMLElement>("[data-mailto-note]")!.hidden = false;
+      widgetBox.hidden = true;
+    };
+
+    const mailtoHref = (): string => {
+      const kind = value("kind");
+      const lines = [
+        `Name: ${value("name")}`,
+        `Email: ${value("email")}`,
+        `Company: ${value("company") || "-"}`,
+        `About: ${kind}`,
+      ];
+      if (kind === "freelance") lines.push(`Budget: ${value("budget") || "-"}`);
+      lines.push("", value("message"));
+      const subject = `Enquiry from ${value("name") || "the website"}`;
+      return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+    };
+
+    const loadTurnstile = () => {
+      const w = window as Win;
+      const render = () => {
+        if (!w.turnstile || mailtoMode) return;
+        widgetId = w.turnstile.render(widgetBox, { sitekey, theme: "dark", action: "contact" });
+      };
+      if (w.turnstile) return render();
+      const s = document.createElement("script");
+      s.src = TURNSTILE_SRC;
+      s.async = true;
+      s.onload = render;
+      s.onerror = () => enterMailtoMode("Turnstile script did not load");
+      document.head.append(s);
+    };
+
+    const probe = async () => {
+      try {
+        const res = await fetch(`${api}/api/health`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        enterMailtoMode(`health probe failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+
+    const start = () => {
+      if (started) return;
+      started = true;
+      if (!sitekey) return enterMailtoMode("no Turnstile site key in this build");
+      loadTurnstile();
+      void probe();
+    };
+
+    if ("IntersectionObserver" in window) {
+      const io = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) {
+            io.disconnect();
+            start();
+          }
+        },
+        { rootMargin: "400px" },
+      );
+      io.observe(root);
+    } else {
+      start();
+    }
+    form.addEventListener("focusin", start, { once: true });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      start();
+      if (mailtoMode) {
+        window.location.href = mailtoHref();
+        return;
+      }
+
+      const w = window as Win;
+      const token = widgetId && w.turnstile ? w.turnstile.getResponse(widgetId) : undefined;
+      if (!token) {
+        say("The spam check is still running. Wait a moment, then send again.", "error");
+        return;
+      }
+
+      const kind = value("kind");
+      const payload = {
+        name: value("name"),
+        email: value("email"),
+        company: value("company") || null,
+        kind,
+        budget: kind === "freelance" ? value("budget") || null : null,
+        message: value("message"),
+        website: value("website"),
+        turnstile_token: token,
+      };
+
+      button.disabled = true;
+      say("Sending…");
+      let res: Response;
+      try {
+        res = await fetch(`${api}/api/contact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+        });
+      } catch (err) {
+        button.disabled = false;
+        enterMailtoMode(`send failed: ${err instanceof Error ? err.message : String(err)}`);
+        say("The form could not reach the server. Send again to open your mail app.", "error");
+        return;
+      }
+      button.disabled = false;
+
+      if (res.ok) {
+        form.hidden = true;
+        thanks.hidden = false;
+        thanks.focus();
+        return;
+      }
+      if (widgetId && w.turnstile) w.turnstile.reset(widgetId);
+      if (res.status === 400) {
+        say("The spam check failed. Wait for a new check, then send again.", "error");
+      } else if (res.status === 422) {
+        say("Some fields are not valid. Check the email address and that the message has 20 or more characters.", "error");
+      } else if (res.status === 429) {
+        enterMailtoMode("rate limited");
+        say("Too many messages from this network in the last hour. Send again to open your mail app.", "error");
+      } else {
+        enterMailtoMode(`HTTP ${res.status}`);
+        say("The form is offline. Send again to open your mail app.", "error");
+      }
+    });
+  }
+</script>

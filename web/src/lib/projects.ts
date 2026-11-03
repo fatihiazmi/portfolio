@@ -8,8 +8,8 @@
  */
 import { z } from "astro/zod";
 import snapshot from "../data/projects.snapshot.json";
+import { API_URL } from "./site";
 
-const API_URL = (import.meta.env.API_URL ?? "https://api.fatihiazmi.dev").replace(/\/$/, "");
 const TIMEOUT_MS = 10_000;
 
 const image = z.object({

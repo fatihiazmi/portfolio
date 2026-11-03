@@ -1,6 +1,7 @@
 ---
 // Placeholder home page for T8: proves layout, tokens, and build-time data.
 // T10 replaces the sections with the spec 3.1 order.
+import ContactForm from "../components/ContactForm.astro";
 import Base from "../layouts/Base.astro";
 import { getProjects } from "../lib/projects";
 
@@ -40,7 +41,10 @@ const { projects, source } = await getProjects();
     <h2 id="contact-heading" class="font-mono text-sm tracking-[0.2em] text-muted uppercase">
       Contact
     </h2>
-    <p class="mt-4 text-muted">The contact form arrives in T9.</p>
+    <p class="mt-4 max-w-2xl text-muted">
+      Tell me what you need built. I reply within 2 working days.
+    </p>
+    <ContactForm />
   </section>
 
   <p class="sr-only" data-projects-source={source}></p>
