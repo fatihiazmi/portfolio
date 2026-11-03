@@ -3,18 +3,23 @@ import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from portfolio_api import projects
+from portfolio_api import contact, projects
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
 
 log = logging.getLogger("portfolio_api")
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+HTTP_TIMEOUT = httpx.Timeout(10.0)
+
+
+def create_app(settings: Settings | None = None, http: httpx.Client | None = None) -> FastAPI:
+    """Build the app. Tests pass `http` with a mock transport for Turnstile and Resend."""
     settings = settings or get_settings()
 
     @asynccontextmanager
@@ -23,11 +28,17 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         applied = migrate(conn)
         if applied:
             log.info("applied migrations: %s", ", ".join(applied))
+        if not settings.contact_ready:
+            log.warning("contact form off: set IP_HASH_SALT and TURNSTILE_SECRET")
+        client = http or httpx.Client(timeout=HTTP_TIMEOUT)
         app.state.db = conn
         app.state.settings = settings
+        app.state.http = client
         try:
             yield
         finally:
+            if http is None:
+                client.close()
             conn.close()
 
     app = FastAPI(title="portfolio-api", lifespan=lifespan, docs_url=None, redoc_url=None)
@@ -50,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return JSONResponse({"ok": True})
 
     app.include_router(projects.router)
+    app.include_router(contact.router)
 
     return app
 

@@ -36,7 +36,7 @@ def test_migrate_creates_spec_tables(conn: sqlite3.Connection) -> None:
 
 def test_migrate_is_idempotent(tmp_path: Path) -> None:
     c = db.connect(tmp_path / "t.db")
-    assert db.migrate(c) == ["0001_init"]
+    assert db.migrate(c) == ["0001_init", "0002_leads_rate_limit"]
     assert db.migrate(c) == []
 
 
@@ -91,11 +91,11 @@ def test_failed_migration_rolls_back(tmp_path: Path, monkeypatch: pytest.MonkeyP
     c = db.connect(tmp_path / "t.db")
     db.migrate(c)
     real = db._migration_files()
-    broken = ("0002_broken", "CREATE TABLE extra (id INTEGER);\nTHIS IS NOT SQL;")
+    broken = ("9999_broken", "CREATE TABLE extra (id INTEGER);\nTHIS IS NOT SQL;")
     monkeypatch.setattr(db, "_migration_files", lambda: [*real, broken])
     with pytest.raises(sqlite3.OperationalError):
         db.migrate(c)
     tables = {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert "extra" not in tables
     versions = {r[0] for r in c.execute("SELECT version FROM schema_migrations")}
-    assert versions == {"0001_init"}
+    assert versions == {v for v, _ in real}
