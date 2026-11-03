@@ -1,0 +1,41 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Private owner notes: host names, Tailscale IPs, hardware
+docs/notes.md
+
+# Raw client content before scrubbing (spec 5.1)
+content/
+
+# Node
+node_modules/
+dist/
+.astro/
+coverage/
+playwright-report/
+test-results/
+*.log
+
+# Admin SPA build output, served by FastAPI
+api/static/admin/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# SQLite
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
