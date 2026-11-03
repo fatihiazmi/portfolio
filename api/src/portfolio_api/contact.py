@@ -133,9 +133,17 @@ def _send_notification(
                 "Idempotency-Key": f"lead/{lead_id}",
             },
         )
-        res.raise_for_status()
     except httpx.HTTPError:
-        log.exception("lead %s: notification email failed", lead_id)
+        log.exception("lead %s: notification email failed, Resend unreachable", lead_id)
+        return
+    if res.is_error:
+        # Resend's body names the cause, e.g. an unverified sender domain. It holds no secrets.
+        log.error(
+            "lead %s: notification email failed, Resend %s: %s",
+            lead_id,
+            res.status_code,
+            res.text[:300],
+        )
         return
     log.info("lead %s: notification email sent", lead_id)
 

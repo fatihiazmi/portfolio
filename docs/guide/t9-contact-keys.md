@@ -13,7 +13,7 @@ The code is done. This guide sets the keys it reads.
 | `IP_HASH_SALT` | LXC `.env` | No |
 | `RESEND_API_KEY` | LXC `.env` | No |
 | `LEAD_NOTIFY_EMAIL` | LXC `.env` | No. Your inbox. |
-| `LEAD_FROM_EMAIL` | LXC `.env`, optional | Sender. Default `fatihiazmi.dev <leads@send.fatihiazmi.dev>`. |
+| `LEAD_FROM_EMAIL` | LXC `.env`, optional | Sender. Default `fatihiazmi.dev <leads@fatihiazmi.dev>`. |
 
 Never paste a secret in chat, git, or `docs/notes.md`.
 
@@ -42,11 +42,11 @@ Preview builds on `*.pages.dev` are not in the hostname list. Their form runs in
 
 ## 3. Resend domain
 
-Resend sends from a subdomain, so your main domain mail reputation stays separate.
-
 1. Sign up at `resend.com` with the inbox that receives leads.
-2. **Domains** → **Add Domain** → `send.fatihiazmi.dev`. Region: Tokyo (`ap-northeast-1`), the nearest to Malaysia.
-3. Resend lists DNS records: a DKIM `TXT`, an SPF `MX`, and an SPF `TXT`.
+2. **Domains** → **Add Domain** → `fatihiazmi.dev`. Region: Tokyo (`ap-northeast-1`), the nearest to Malaysia.
+
+   The API sends from `leads@fatihiazmi.dev`. The Resend domain must match it exactly. A key for `fatihiazmi.dev` gets 403 for a sender on `send.fatihiazmi.dev`, and the reverse.
+3. Resend lists DNS records: a DKIM `TXT` at `resend._domainkey`, and bounce records on the `send` subdomain.
 4. Zone `fatihiazmi.dev` → **DNS** → **Records**. Add each record exactly as Resend lists it. Proxy status does not apply to `TXT` and `MX`.
 
    Resend has a **Sign in to Cloudflare** button that adds the records for you. Either way works.
@@ -57,7 +57,7 @@ Resend sends from a subdomain, so your main domain mail reputation stays separat
 |---|---|
 | Name | `portfolio-api` |
 | Permission | Sending access |
-| Domain | `send.fatihiazmi.dev` |
+| Domain | `fatihiazmi.dev` |
 
 7. Copy the key. Resend shows it once.
 
@@ -134,5 +134,5 @@ Add to `docs/notes.md` under `## Contact (T9)`:
 |---|---|---|
 | Button says "Open in my mail app" on the live site | No site key in the build, or `/api/health` failed | Check step 2 and step 6. Run `curl -s https://api.fatihiazmi.dev/api/health`. |
 | "The spam check failed" | Site key and secret are from different widgets, or the hostname is not listed | Check both keys come from `portfolio-contact`. Check the hostname list. |
-| Lead in SQLite, no email | Resend domain unverified, or a wrong key | Run `docker compose logs api` and look for `notification email failed`. |
+| Lead in SQLite, no email | Resend domain unverified, a wrong key, or a sender on another domain | Run `docker compose logs api` and look for `notification email failed`. The line quotes Resend's reason. |
 | API returns 503 `contact form is not configured` | `IP_HASH_SALT` or `TURNSTILE_SECRET` empty | Check step 4, then run `docker compose up -d api`. |

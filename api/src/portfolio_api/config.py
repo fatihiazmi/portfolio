@@ -20,8 +20,9 @@ class Settings(BaseSettings):
     # Lead email. Empty values store the lead and skip the email.
     resend_api_key: str = ""
     lead_notify_email: str = ""
-    # Sender on a domain verified in Resend.
-    lead_from_email: str = "fatihiazmi.dev <leads@send.fatihiazmi.dev>"
+    # Sender on the domain verified in Resend: `fatihiazmi.dev`. A sender on any other
+    # domain, including a subdomain, gets 403 from Resend.
+    lead_from_email: str = "fatihiazmi.dev <leads@fatihiazmi.dev>"
 
     @property
     def contact_ready(self) -> bool:

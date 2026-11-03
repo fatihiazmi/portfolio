@@ -274,3 +274,19 @@ def test_cors_preflight_for_contact(contact_client: TestClient) -> None:
     )
     assert res.status_code == 200
     assert res.headers["access-control-allow-origin"] == "https://fatihiazmi.dev"
+
+
+def test_email_error_logs_resend_reason(
+    contact_client: TestClient, upstream: FakeUpstream, caplog: pytest.LogCaptureFixture
+) -> None:
+    upstream.resend_status = 403
+    with caplog.at_level("ERROR", logger="portfolio_api.contact"):
+        contact_client.post("/api/contact", json=_form(), headers=HEADERS)
+    [record] = [r for r in caplog.records if "notification email failed" in r.getMessage()]
+    assert "Resend 403" in record.getMessage()
+    assert "email-1" in record.getMessage()
+
+
+def test_default_sender_is_on_apex_domain() -> None:
+    # The Resend domain is the apex. A subdomain sender gets 403.
+    assert Settings.model_fields["lead_from_email"].default.endswith("@fatihiazmi.dev>")

@@ -34,7 +34,7 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `TURNSTILE_SECRET` | empty | Turnstile secret key. Empty: `/api/contact` returns 503. |
 | `RESEND_API_KEY` | empty | Resend key. Empty: leads are stored, no email. |
 | `LEAD_NOTIFY_EMAIL` | empty | Inbox for lead emails. Empty: no email. |
-| `LEAD_FROM_EMAIL` | `fatihiazmi.dev <leads@send.fatihiazmi.dev>` | Sender on the Resend-verified domain. |
+| `LEAD_FROM_EMAIL` | `fatihiazmi.dev <leads@fatihiazmi.dev>` | Sender on the Resend-verified domain. Another domain gets 403. |
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md).
 
