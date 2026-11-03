@@ -11,7 +11,7 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T1 | 1 | Create the monorepo: `web/`, `admin/`, `api/`, `infra/`, `docs/`. Add `.gitignore`, `.env.example`, pre-commit with a secret scanner. Push to GitHub. | — | Repo on GitHub. Secret scan runs on commit. | done |
 | T2 | 1 | **Owner input:** buy the domain. Move DNS to Cloudflare. | — | Zone is active in Cloudflare. | done |
 | T3 | 1 | **Owner input:** record free RAM and disk on the Proxmox host. Read the ISP terms on residential hosting. | — | Numbers, capacity decision, and ISP verdict written in `docs/notes.md`. Guides: `docs/guide/t3-proxmox-capacity.md`, `docs/guide/t3-isp-terms.md`. | done |
-| T4 | 2 | API skeleton: FastAPI with `uv`, settings from env, `/api/health`, SQLite WAL, migrations for spec section 8, pytest setup. | T1 | `pytest` passes. `/api/health` returns `{"ok": true}` locally. | todo |
+| T4 | 2 | API skeleton: FastAPI with `uv`, settings from env, `/api/health`, SQLite WAL, migrations for spec section 8, pytest setup. | T1 | `pytest` passes. `/api/health` returns `{"ok": true}` locally. | done |
 | T5 | 2 | `app` LXC: unprivileged, Docker, compose for the API. Cloudflare Tunnel routes `api.<domain>` to `localhost:8000`. | T2, T3, T4 | `https://api.<domain>/api/health` returns 200 from a phone on mobile data. | todo |
 | T6 | 3 | Litestream replicates SQLite to R2. Run one restore drill. | T5 | A restore into a fresh directory opens and passes an integrity check. | todo |
 | T7 | 3 | Public read API: `/api/projects`, `/api/projects/{slug}`, CORS for the Pages origin. Seed script with 7 draft projects and edges. | T4 | Tests cover published-only filtering and 404 on an unknown slug. | todo |

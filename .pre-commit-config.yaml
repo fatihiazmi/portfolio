@@ -5,6 +5,16 @@ repos:
     hooks:
       - id: gitleaks
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      # Ruff finds api/pyproject.toml on its own. Passing --config breaks
+      # path-relative settings such as per-file-ignores.
+      - id: ruff-check
+        files: ^api/
+      - id: ruff-format
+        files: ^api/
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:

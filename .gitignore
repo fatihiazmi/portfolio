@@ -30,6 +30,7 @@ __pycache__/
 .mypy_cache/
 
 # SQLite
+api/data/
 *.db
 *.db-shm
 *.db-wal
