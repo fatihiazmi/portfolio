@@ -54,7 +54,8 @@ pct exec 202 -- docker compose -f /opt/portfolio/infra/app/docker-compose.yml lo
 |---|---|
 | `api` container | about 40–60 MB |
 | `cloudflared` container | about 26 MB |
-| Whole LXC | about 207 MB used of 512 MB |
+| `litestream` container | about 29 MB |
+| Whole LXC | about 183–207 MB used of 512 MB |
 
 ## Backups (Litestream)
 
@@ -98,3 +99,9 @@ curl -s https://api.fatihiazmi.dev/api/health
 ```
 
 For a point in time, add `-timestamp 2026-11-05T10:00:00Z` before `/data/portfolio.db`. Restores reach back 7 days.
+
+### Drill log
+
+| Date | Result |
+|---|---|
+| 2026-11-03 | Passed. Integrity `ok`. A lead written 5 s before the restore was present in the restored copy. |
