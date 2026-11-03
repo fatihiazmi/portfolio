@@ -1,0 +1,62 @@
+---
+/**
+ * "How I work" block: three points, each backed by one case study. Spec section 3.1, item 3.
+ * A proof line shows only when its project is published.
+ * DRAFT(T19): the proof lines carry no numbers yet. The owner replaces them with
+ * facts from the case studies (T15).
+ */
+import type { Project } from "../lib/projects";
+
+interface Props {
+  projects: Project[];
+}
+
+const { projects } = Astro.props;
+const titles = new Map(projects.map((p) => [p.slug, p.title]));
+
+const points = [
+  {
+    title: "AI-driven delivery",
+    body: "I write the spec first, then build in small, reviewed slices with AI pair-programming. You see working software early and often.",
+    proof: { slug: "sims", text: "Delivered spec-first, in reviewed slices." },
+  },
+  {
+    title: "Tests on the rules that matter",
+    body: "Business rules get tests before they ship: pay calculations, approval chains, and the edge cases between them.",
+    proof: { slug: "otms", text: "Overtime and payroll rules covered by tests." },
+  },
+  {
+    title: "Production monitoring",
+    body: "Metrics, alerts, and backups from day one, so problems surface before your users report them.",
+    proof: { slug: "nadi", text: "Monitored in production across the centre network." },
+  },
+];
+---
+
+<section id="how" aria-labelledby="how-heading" class="py-12">
+  <h2 id="how-heading" class="font-mono text-sm tracking-[0.2em] text-muted uppercase">
+    How I work
+  </h2>
+  <ol class="mt-6 grid gap-8 md:grid-cols-3 md:gap-6">
+    {
+      points.map((p, i) => {
+        const project = titles.get(p.proof.slug);
+        return (
+          <li class="border-t border-line-strong pt-5">
+            <p class="font-mono text-xs text-amber" aria-hidden="true">
+              {String(i + 1).padStart(2, "0")}
+            </p>
+            <h3 class="mt-2 text-lg font-semibold">{p.title}</h3>
+            <p class="mt-2 text-muted">{p.body}</p>
+            {project && (
+              <p class="mt-4 border-l-2 border-cyan pl-3 text-sm">
+                <span class="font-mono text-xs text-cyan uppercase">{project}</span>
+                <span class="block text-paper">{p.proof.text}</span>
+              </p>
+            )}
+          </li>
+        );
+      })
+    }
+  </ol>
+</section>

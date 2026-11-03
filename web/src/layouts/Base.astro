@@ -1,5 +1,6 @@
 ---
 import WhatsAppFab from "../components/WhatsAppFab.astro";
+import { OWNER_NAME, POSITIONING } from "../lib/site";
 import "../styles/global.css";
 
 interface Props {
@@ -8,11 +9,8 @@ interface Props {
 }
 
 const SITE_NAME = "fatihiazmi";
-const {
-  title,
-  description = "Full-stack engineer. I build the systems organisations run their day on.",
-} = Astro.props;
-const pageTitle = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
+const { title, description = POSITIONING } = Astro.props;
+const pageTitle = title ? `${title} · ${SITE_NAME}` : `${OWNER_NAME} · Full-stack engineer`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const year = new Date().getFullYear();
 

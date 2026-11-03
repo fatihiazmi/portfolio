@@ -1,0 +1,50 @@
+---
+/**
+ * Home hero: name, positioning line, two calls to action, systems map. Spec section 3.1.
+ * Phones stack the map under the text. Desktop puts them side by side.
+ */
+import type { Edge, Project } from "../lib/projects";
+import { OWNER_NAME, POSITIONING } from "../lib/site";
+import MapPlaceholder from "./MapPlaceholder.astro";
+
+interface Props {
+  projects: Project[];
+  edges: Edge[];
+}
+
+const { projects, edges } = Astro.props;
+---
+
+<section
+  aria-labelledby="hero-heading"
+  class="grid items-center gap-10 pb-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-12"
+>
+  <div>
+    <h1 id="hero-heading">
+      <span class="block font-mono text-sm tracking-[0.2em] text-cyan uppercase">{OWNER_NAME}</span>
+      <span class="mt-4 block text-3xl leading-tight font-semibold text-balance sm:text-5xl">
+        {POSITIONING}
+      </span>
+    </h1>
+    <p class="mt-5 max-w-xl text-lg text-muted">
+      Maintenance, payroll, and government workflow systems for organisations that run on them every
+      day.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a
+        href="#contact"
+        class="inline-flex min-h-11 items-center bg-amber px-5 font-mono text-sm font-medium text-ink-950 transition-colors hover:bg-paper motion-reduce:transition-none"
+      >
+        Start a project
+      </a>
+      <a
+        href="#work"
+        class="inline-flex min-h-11 items-center border border-line-strong px-5 font-mono text-sm font-medium transition-colors hover:border-paper motion-reduce:transition-none"
+      >
+        See the work
+      </a>
+    </div>
+  </div>
+
+  <MapPlaceholder projects={projects} edges={edges} />
+</section>

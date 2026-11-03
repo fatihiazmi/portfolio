@@ -1,5 +1,11 @@
 /** Site-wide constants shared by pages and components. */
 
+/** Owner's display name. Hero and page titles. */
+export const OWNER_NAME = "Fatihi Azmi";
+
+/** Positioning line. Hero and the default meta description. Spec section 3.1. */
+export const POSITIONING = "Full-stack engineer. I build the systems organisations run their day on.";
+
 /** Public address for the `mailto:` fallback when the contact API is down. Spec section 2.2. */
 export const CONTACT_EMAIL = "fatihiazmi@gmail.com";
 

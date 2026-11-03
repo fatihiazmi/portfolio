@@ -1,0 +1,67 @@
+---
+/**
+ * Selected work: client systems first, then personal repos. Spec section 3.1, item 4.
+ * Order within each group follows `sort_order` from the API.
+ * T13 adds the "Read case study" link to `/work/[slug]`.
+ */
+import type { Project } from "../lib/projects";
+
+interface Props {
+  projects: Project[];
+}
+
+const { projects } = Astro.props;
+
+const groups = [
+  { id: "work-client", label: "Client systems", items: projects.filter((p) => p.kind === "client") },
+  { id: "work-personal", label: "Personal builds", items: projects.filter((p) => p.kind === "personal") },
+].filter((g) => g.items.length > 0);
+---
+
+<section id="work" aria-labelledby="work-heading" class="py-12">
+  <h2 id="work-heading" class="font-mono text-sm tracking-[0.2em] text-muted uppercase">
+    Selected work
+  </h2>
+  {
+    groups.length > 0 ? (
+      groups.map((g) => (
+        <div class="mt-8">
+          <h3 id={g.id} class="font-mono text-xs tracking-[0.2em] text-cyan uppercase">
+            {g.label}
+          </h3>
+          <ul aria-labelledby={g.id} class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {g.items.map((p) => (
+              <li class="flex flex-col border border-line bg-ink-800/60 p-5">
+                <p class="font-mono text-xs text-muted">
+                  {[p.client, p.year].filter(Boolean).join(" · ")}
+                </p>
+                <h4 class="mt-1 text-lg font-semibold">{p.title}</h4>
+                <p class="mt-2 text-sm text-muted">{p.summary}</p>
+                {p.stack.length > 0 && (
+                  <ul class="mt-4 flex flex-wrap gap-1.5" aria-label="Stack">
+                    {p.stack.map((s) => (
+                      <li class="border border-line px-2 py-0.5 font-mono text-xs text-paper">{s}</li>
+                    ))}
+                  </ul>
+                )}
+                {p.repo_url && (
+                  <a
+                    href={p.repo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="mt-auto inline-flex min-h-11 items-center gap-1 self-start pt-4 font-mono text-sm text-cyan hover:text-paper"
+                  >
+                    Source on GitHub <span aria-hidden="true">↗</span>
+                    <span class="sr-only">(opens in a new tab)</span>
+                  </a>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))
+    ) : (
+      <p class="mt-6 text-muted">Case studies are on the way.</p>
+    )
+  }
+</section>

@@ -1,42 +1,21 @@
 ---
-// Placeholder home page for T8: proves layout, tokens, and build-time data.
-// T10 replaces the sections with the spec 3.1 order.
+// Home page in the spec 3.1 order. T11 swaps the hero map for the 3D island.
 import ContactSection from "../components/ContactSection.astro";
+import Hero from "../components/Hero.astro";
+import HowIWork from "../components/HowIWork.astro";
+import Services from "../components/Services.astro";
+import WorkList from "../components/WorkList.astro";
 import Base from "../layouts/Base.astro";
 import { getProjects } from "../lib/projects";
 
-const { projects, source } = await getProjects();
+const { projects, edges, source } = await getProjects();
 ---
 
 <Base>
-  <section class="max-w-3xl py-12">
-    <p class="font-mono text-xs tracking-[0.2em] text-cyan uppercase">Systems builder</p>
-    <h1 class="mt-4 text-3xl leading-tight font-semibold text-balance sm:text-5xl">
-      Full-stack engineer. I build the systems organisations run their day on.
-    </h1>
-  </section>
-
-  <section id="work" aria-labelledby="work-heading" class="py-12">
-    <h2 id="work-heading" class="font-mono text-sm tracking-[0.2em] text-muted uppercase">
-      Selected work
-    </h2>
-    {
-      projects.length > 0 ? (
-        <ul class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
-            <li class="border border-line bg-ink-800/60 p-5">
-              <p class="font-mono text-xs text-cyan uppercase">{p.kind}</p>
-              <h3 class="mt-2 text-lg font-semibold">{p.title}</h3>
-              <p class="mt-2 text-sm text-muted">{p.summary}</p>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p class="mt-6 text-muted">Case studies are on the way.</p>
-      )
-    }
-  </section>
-
+  <Hero projects={projects} edges={edges} />
+  <Services projects={projects} />
+  <HowIWork projects={projects} />
+  <WorkList projects={projects} />
   <ContactSection />
 
   <p class="sr-only" data-projects-source={source}></p>

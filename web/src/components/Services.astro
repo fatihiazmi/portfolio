@@ -1,0 +1,62 @@
+---
+/**
+ * "What I build" block. Spec section 3.1, item 2.
+ * Each service names the project that proves it, when that project is published.
+ * DRAFT(T19): the owner reviews this copy with the case studies.
+ */
+import type { Project } from "../lib/projects";
+
+interface Props {
+  projects: Project[];
+}
+
+const { projects } = Astro.props;
+const titles = new Map(projects.map((p) => [p.slug, p.title]));
+
+const services = [
+  {
+    title: "Maintenance and CMMS",
+    body: "Asset registers, inspections, work orders, and maintenance schedules for physical assets.",
+    proof: "sims",
+  },
+  {
+    title: "HR, payroll, and overtime",
+    body: "Attendance, overtime claims, and approvals that feed payroll without spreadsheets in between.",
+    proof: "otms",
+  },
+  {
+    title: "ERP modules",
+    body: "Records, approvals, and reports for the core of your operation, built to fit the systems you already run.",
+    proof: null,
+  },
+  {
+    title: "Government workflow systems",
+    body: "Programmes that span many sites: applications, approvals, and reporting up the chain.",
+    proof: "nadi",
+  },
+];
+---
+
+<section id="services" aria-labelledby="services-heading" class="py-12">
+  <h2 id="services-heading" class="font-mono text-sm tracking-[0.2em] text-muted uppercase">
+    What I build
+  </h2>
+  <ul class="mt-6 grid gap-px border border-line bg-line sm:grid-cols-2">
+    {
+      services.map((s) => {
+        const proof = s.proof && titles.get(s.proof);
+        return (
+          <li class="flex flex-col bg-ink-900 p-6">
+            <h3 class="text-lg font-semibold">{s.title}</h3>
+            <p class="mt-2 text-muted">{s.body}</p>
+            {proof && (
+              <p class="mt-4 font-mono text-xs text-cyan uppercase">
+                Built: <span class="text-paper">{proof}</span>
+              </p>
+            )}
+          </li>
+        );
+      })
+    }
+  </ul>
+</section>
