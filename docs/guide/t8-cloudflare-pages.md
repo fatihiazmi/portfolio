@@ -52,10 +52,11 @@ Commits to `api/`, `infra/`, or `docs/` then skip the build. Deploy hooks still 
 
 | Field | Value |
 |---|---|
-| When | Hostname equals `www.fatihiazmi.dev` |
-| Then | Dynamic redirect: `concat("https://fatihiazmi.dev", http.request.uri.path)` |
-| Status code | `301` |
-| Preserve query string | on |
+| Match | Wildcard pattern |
+| Request URL | `https://www.*` |
+| Target URL | `https://${1}` |
+| Status code | `301 - Permanent Redirect` |
+| Preserve query string | on. The template leaves it off. Tick it. |
 
 Check: `curl -sI https://www.fatihiazmi.dev/stack | head -3` shows `301` and `location: https://fatihiazmi.dev/stack`.
 
