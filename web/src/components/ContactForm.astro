@@ -6,102 +6,116 @@
  * - online: Turnstile renders, the form posts to the API.
  * - mailto: the send button opens the visitor's mail app with the message pre-filled.
  *   Triggers: no site key in the build, `/api/health` fails when the form nears the
- *   viewport, or a send fails with a network error or a 5xx. Spec section 2.2.
+ *   viewport, or a send fails with a network error, a 5xx, or a 429. Spec section 2.2.
+ *
+ * Accessibility:
+ * - Validation runs in script (`novalidate`). Each invalid field gets `aria-invalid`
+ *   and an inline error linked by `aria-describedby`. Focus moves to the first one.
+ * - Every control is at least 44 px tall. Text is 16 px, so iOS does not zoom on focus.
  *
  * The Turnstile script and the health probe load only when the form is near the
  * viewport, so the home page ships no third-party script on first paint.
  */
-import {
-  API_URL,
-  CONTACT_EMAIL,
-  TURNSTILE_SITE_KEY,
-  WHATSAPP_DISPLAY,
-  WHATSAPP_URL,
-} from "../lib/site";
+import { API_URL, CONTACT_EMAIL, TURNSTILE_SITE_KEY, WHATSAPP_URL } from "../lib/site";
 
 if (!TURNSTILE_SITE_KEY) {
   console.warn("[contact] PUBLIC_TURNSTILE_SITE_KEY is not set. The form builds in mailto mode.");
 }
 
-const budgets = ["<RM10k", "RM10k–50k", "RM50k+", "unsure"] as const;
-const budgetLabels: Record<(typeof budgets)[number], string> = {
-  "<RM10k": "Under RM10k",
-  "RM10k–50k": "RM10k – RM50k",
-  "RM50k+": "Over RM50k",
-  unsure: "Not sure yet",
-};
+const budgets = [
+  { value: "<RM10k", label: "Under RM10k" },
+  { value: "RM10k–50k", label: "RM10k – RM50k" },
+  { value: "RM50k+", label: "Over RM50k" },
+  { value: "unsure", label: "Not sure yet" },
+] as const;
 const kinds = [
   { value: "freelance", label: "A project for my organisation" },
   { value: "hiring", label: "A role I am hiring for" },
   { value: "other", label: "Something else" },
 ] as const;
 
-const field =
-  "mt-2 block w-full border border-line bg-ink-950/70 px-3 py-2 text-paper placeholder:text-muted/70 focus:border-line-strong";
-const label = "font-mono text-xs tracking-wide text-muted uppercase";
+const input =
+  "mt-2 block min-h-11 w-full border border-line bg-ink-950/70 px-3 py-2 text-base text-paper placeholder:text-muted hover:border-line-strong focus:border-line-strong aria-[invalid=true]:border-amber";
+const label = "block font-mono text-xs tracking-wide text-paper uppercase";
+const optional = "font-sans text-xs text-muted normal-case";
+const error = "mt-1.5 text-sm text-amber empty:hidden";
 ---
 
 <div
   id="contact-root"
-  class="mt-6 max-w-2xl"
+  class="mt-5"
   data-api={API_URL}
   data-email={CONTACT_EMAIL}
   data-sitekey={TURNSTILE_SITE_KEY ?? ""}
 >
-  <p class="mb-6 text-sm text-muted">
-    Prefer chat? WhatsApp me at
-    <a
-      class="text-amber underline"
-      href={WHATSAPP_URL}
-      target="_blank"
-      rel="noopener noreferrer">{WHATSAPP_DISPLAY}</a
-    >.
-  </p>
-
   <noscript>
-    <p class="border border-line bg-ink-800/60 p-4 text-muted">
-      The form needs JavaScript. Email me at
-      <a class="text-amber underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+    <p class="mb-5 border border-line p-4 text-muted">
+      The form needs JavaScript. Email
+      <a class="text-amber underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+      or use WhatsApp.
     </p>
   </noscript>
 
-  <form id="contact-form" class="grid gap-5" aria-describedby="contact-status">
-    <div class="grid gap-5 sm:grid-cols-2">
-      <label class="block">
-        <span class={label}>Name</span>
-        <input class={field} name="name" type="text" required maxlength="100" autocomplete="name" />
-      </label>
-      <label class="block">
-        <span class={label}>Email</span>
+  <form id="contact-form" class="grid gap-6" novalidate>
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div>
+        <label class={label} for="contact-name">Name</label>
         <input
-          class={field}
+          class={input}
+          id="contact-name"
+          name="name"
+          type="text"
+          required
+          maxlength="100"
+          autocomplete="name"
+          autocapitalize="words"
+          aria-describedby="contact-name-error"
+        />
+        <p id="contact-name-error" class={error}></p>
+      </div>
+      <div>
+        <label class={label} for="contact-email">Email</label>
+        <input
+          class={input}
+          id="contact-email"
           name="email"
           type="email"
           required
           maxlength="254"
           autocomplete="email"
+          spellcheck="false"
+          aria-describedby="contact-email-error"
         />
-      </label>
+        <p id="contact-email-error" class={error}></p>
+      </div>
     </div>
 
-    <label class="block">
-      <span class={label}>Company <span class="normal-case">(optional)</span></span>
-      <input class={field} name="company" type="text" maxlength="150" autocomplete="organization" />
-    </label>
+    <div>
+      <label class={label} for="contact-company">
+        Company <span class={optional}>(optional)</span>
+      </label>
+      <input
+        class={input}
+        id="contact-company"
+        name="company"
+        type="text"
+        maxlength="150"
+        autocomplete="organization"
+      />
+    </div>
 
     <fieldset>
       <legend class={label}>What is this about?</legend>
       <div class="mt-2 grid gap-2">
         {
           kinds.map((k, i) => (
-            <label class="flex items-center gap-3 border border-line bg-ink-950/40 px-3 py-2 has-checked:border-line-strong">
+            <label class="flex min-h-11 cursor-pointer items-center gap-3 border border-line bg-ink-950/40 px-3 py-2 hover:border-line-strong has-checked:border-line-strong has-checked:bg-ink-800">
               <input
                 type="radio"
                 name="kind"
                 value={k.value}
-                required
                 checked={i === 0}
-                class="accent-amber"
+                class="size-4 shrink-0 accent-amber"
               />
               <span>{k.label}</span>
             </label>
@@ -110,24 +124,33 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
       </div>
     </fieldset>
 
-    <label class="block" data-budget>
-      <span class={label}>Budget <span class="normal-case">(optional)</span></span>
-      <select class={field} name="budget">
+    <div data-budget>
+      <label class={label} for="contact-budget">
+        Budget <span class={optional}>(optional)</span>
+      </label>
+      <select class={input} id="contact-budget" name="budget">
         <option value="">Choose a range</option>
-        {budgets.map((b) => <option value={b}>{budgetLabels[b]}</option>)}
+        {budgets.map((b) => <option value={b.value}>{b.label}</option>)}
       </select>
-    </label>
+    </div>
 
-    <label class="block">
-      <span class={label}>Message</span>
+    <div>
+      <label class={label} for="contact-message">Message</label>
       <textarea
-        class={`${field} min-h-40`}
+        class={`${input} min-h-40 resize-y`}
+        id="contact-message"
         name="message"
         required
         minlength="20"
         maxlength="5000"
-        placeholder="What do you need built, and by when?"></textarea>
-    </label>
+        rows="6"
+        placeholder="What do you need built, and by when?"
+        aria-describedby="contact-message-hint contact-message-error"></textarea>
+      <p id="contact-message-hint" class="mt-1.5 text-sm text-muted">
+        20 to 5000 characters. <span data-count>0</span> so far.
+      </p>
+      <p id="contact-message-error" class={error}></p>
+    </div>
 
     <!-- Honeypot. People never see it. Bots that fill it get a fake success. -->
     <div class="absolute -left-[9999px] h-px w-px overflow-hidden" aria-hidden="true">
@@ -137,27 +160,32 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
       </label>
     </div>
 
-    <div data-turnstile class="min-h-[65px]"></div>
+    <div data-turnstile class="min-h-[65px] w-full"></div>
 
-    <div class="flex flex-wrap items-center gap-4">
+    <div class="grid gap-3">
       <button
         type="submit"
-        class="bg-amber px-5 py-2.5 font-mono text-sm font-medium text-ink-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+        class="min-h-12 w-full bg-amber px-6 font-mono text-sm font-medium text-ink-950 transition-opacity hover:opacity-90 disabled:cursor-wait disabled:opacity-60 motion-reduce:transition-none sm:w-auto sm:justify-self-start"
       >
         <span data-label-online>Send message</span>
         <span data-label-mailto hidden>Open in my mail app</span>
       </button>
       <p data-mailto-note hidden class="text-sm text-muted">
-        The form is offline. Your message opens in your mail app, addressed to
-        <a class="text-amber underline" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        The form is offline. Send opens your mail app with the message filled in. WhatsApp also
+        works.
       </p>
+      <p id="contact-status" role="status" aria-live="polite" class="text-sm empty:hidden"></p>
     </div>
-
-    <p id="contact-status" role="status" aria-live="polite" class="text-sm"></p>
   </form>
 
-  <div data-thanks hidden tabindex="-1" class="border border-line-strong bg-ink-800/60 p-6">
-    <p class="text-lg font-semibold">Thanks. I reply within 2 working days.</p>
+  <div data-thanks hidden tabindex="-1" class="py-6 focus:outline-none">
+    <p class="text-xl font-semibold">Thanks. I reply within 2 working days.</p>
+    <p class="mt-2 text-muted">
+      Need a faster answer?
+      <a class="text-amber underline" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer"
+        >WhatsApp me<span class="sr-only"> (opens in a new tab)</span></a
+      >.
+    </p>
   </div>
 </div>
 
@@ -168,10 +196,15 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
     reset(id: string): void;
   };
   type Win = Window & { turnstile?: Turnstile };
+  type Field = HTMLInputElement | HTMLTextAreaElement;
 
   const PROBE_TIMEOUT_MS = 5_000;
   const SEND_TIMEOUT_MS = 20_000;
+  const MESSAGE_MIN = 20;
   const TURNSTILE_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+  // Turnstile "flexible" fills the form width, minimum 300 px. Forms narrower than
+  // that (phones under 332 px wide) get the compact widget, so nothing overflows.
+  const TURNSTILE_FLEX_MIN = 300;
 
   const root = document.getElementById("contact-root");
   const form = document.getElementById("contact-form");
@@ -181,12 +214,39 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
     const api = root.dataset.api ?? "";
     const email = root.dataset.email ?? "";
     const sitekey = root.dataset.sitekey ?? "";
-    const status = form.querySelector<HTMLElement>("#contact-status")!;
-    const button = form.querySelector<HTMLButtonElement>("button[type=submit]")!;
-    const budget = form.querySelector<HTMLElement>("[data-budget]")!;
-    const budgetSelect = budget.querySelector("select")!;
-    const widgetBox = form.querySelector<HTMLElement>("[data-turnstile]")!;
-    const thanks = root.querySelector<HTMLElement>("[data-thanks]")!;
+    const $ = <T extends Element>(sel: string) => root.querySelector<T>(sel)!;
+    const status = $<HTMLElement>("#contact-status");
+    const button = $<HTMLButtonElement>("button[type=submit]");
+    const budget = $<HTMLElement>("[data-budget]");
+    const budgetSelect = $<HTMLSelectElement>("#contact-budget");
+    const message = $<HTMLTextAreaElement>("#contact-message");
+    const count = $<HTMLElement>("[data-count]");
+    const widgetBox = $<HTMLElement>("[data-turnstile]");
+    const thanks = $<HTMLElement>("[data-thanks]");
+
+    const validated: { el: Field; name: string; check: (v: string, el: Field) => string }[] = [
+      { el: $("#contact-name"), name: "Name", check: (v) => (v ? "" : "Enter your name.") },
+      {
+        el: $("#contact-email"),
+        name: "Email",
+        check: (v, el) =>
+          !v
+            ? "Enter your email address."
+            : el.validity.typeMismatch
+              ? "Enter an email address like name@example.com."
+              : "",
+      },
+      {
+        el: message,
+        name: "Message",
+        check: (v) =>
+          !v
+            ? "Write a message."
+            : v.length < MESSAGE_MIN
+              ? `Write at least ${MESSAGE_MIN} characters. ${MESSAGE_MIN - v.length} more to go.`
+              : "",
+      },
+    ];
 
     let mailtoMode = false;
     let widgetId: string | undefined;
@@ -194,16 +254,44 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
 
     const say = (text: string, tone: "info" | "error" = "info") => {
       status.textContent = text;
-      status.className = `text-sm ${tone === "error" ? "text-amber" : "text-muted"}`;
+      status.className = `text-sm empty:hidden ${tone === "error" ? "text-amber" : "text-muted"}`;
     };
 
     const value = (name: string): string => {
       const el = form.elements.namedItem(name);
       if (el instanceof RadioNodeList) return el.value;
-      return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement
+      return el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement
         ? el.value.trim()
         : "";
     };
+
+    const showError = (el: Field, text: string) => {
+      const box = document.getElementById(`${el.id}-error`);
+      if (box) box.textContent = text;
+      if (text) el.setAttribute("aria-invalid", "true");
+      else el.removeAttribute("aria-invalid");
+    };
+
+    /** Checks every field. Returns the invalid ones in page order. */
+    const validate = () =>
+      validated.filter((f) => {
+        const text = f.check(f.el.value.trim(), f.el);
+        showError(f.el, text);
+        return text !== "";
+      });
+
+    // Re-check a field as the visitor fixes it, once it has shown an error.
+    for (const f of validated) {
+      f.el.addEventListener("input", () => {
+        if (f.el.hasAttribute("aria-invalid")) showError(f.el, f.check(f.el.value.trim(), f.el));
+      });
+    }
+
+    message.addEventListener("input", () => {
+      count.textContent = String(message.value.trim().length);
+    });
 
     // Budget only for freelance. Spec section 6.
     const syncBudget = () => {
@@ -220,9 +308,9 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
       if (mailtoMode) return;
       mailtoMode = true;
       console.warn(`[contact] mailto mode: ${reason}`);
-      form.querySelector<HTMLElement>("[data-label-online]")!.hidden = true;
-      form.querySelector<HTMLElement>("[data-label-mailto]")!.hidden = false;
-      form.querySelector<HTMLElement>("[data-mailto-note]")!.hidden = false;
+      $<HTMLElement>("[data-label-online]").hidden = true;
+      $<HTMLElement>("[data-label-mailto]").hidden = false;
+      $<HTMLElement>("[data-mailto-note]").hidden = false;
       widgetBox.hidden = true;
     };
 
@@ -244,7 +332,8 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
       const w = window as Win;
       const render = () => {
         if (!w.turnstile || mailtoMode) return;
-        widgetId = w.turnstile.render(widgetBox, { sitekey, theme: "dark", action: "contact" });
+        const size = form.clientWidth < TURNSTILE_FLEX_MIN ? "compact" : "flexible";
+        widgetId = w.turnstile.render(widgetBox, { sitekey, theme: "dark", size, action: "contact" });
       };
       if (w.turnstile) return render();
       const s = document.createElement("script");
@@ -257,7 +346,9 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
 
     const probe = async () => {
       try {
-        const res = await fetch(`${api}/api/health`, { signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) });
+        const res = await fetch(`${api}/api/health`, {
+          signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+        });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         enterMailtoMode(`health probe failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -288,10 +379,25 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
     }
     form.addEventListener("focusin", start, { once: true });
 
+    const setBusy = (busy: boolean) => {
+      button.disabled = busy;
+      form.setAttribute("aria-busy", String(busy));
+    };
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       start();
+
+      const invalid = validate();
+      if (invalid.length > 0) {
+        const names = invalid.map((f) => f.name).join(", ");
+        say(`Check ${invalid.length === 1 ? "this field" : "these fields"}: ${names}.`, "error");
+        invalid[0]?.el.focus();
+        return;
+      }
+
       if (mailtoMode) {
+        say("");
         window.location.href = mailtoHref();
         return;
       }
@@ -315,7 +421,7 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
         turnstile_token: token,
       };
 
-      button.disabled = true;
+      setBusy(true);
       say("Sending…");
       let res: Response;
       try {
@@ -326,12 +432,12 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
           signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
       } catch (err) {
-        button.disabled = false;
+        setBusy(false);
         enterMailtoMode(`send failed: ${err instanceof Error ? err.message : String(err)}`);
         say("The form could not reach the server. Send again to open your mail app.", "error");
         return;
       }
-      button.disabled = false;
+      setBusy(false);
 
       if (res.ok) {
         form.hidden = true;
@@ -343,10 +449,13 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
       if (res.status === 400) {
         say("The spam check failed. Wait for a new check, then send again.", "error");
       } else if (res.status === 422) {
-        say("Some fields are not valid. Check the email address and that the message has 20 or more characters.", "error");
+        say("The server rejected a field. Check the email address, then send again.", "error");
       } else if (res.status === 429) {
         enterMailtoMode("rate limited");
-        say("Too many messages from this network in the last hour. Send again to open your mail app.", "error");
+        say(
+          "Too many messages from this network in the last hour. Send again to open your mail app.",
+          "error",
+        );
       } else {
         enterMailtoMode(`HTTP ${res.status}`);
         say("The form is offline. Send again to open your mail app.", "error");

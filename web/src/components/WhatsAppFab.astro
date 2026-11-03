@@ -1,0 +1,41 @@
+---
+/**
+ * Floating WhatsApp button on every page.
+ *
+ * - Phone: 56 px round icon button. Desktop (sm+): pill with the label.
+ * - Hides while `#contact` is on screen. That section has its own WhatsApp
+ *   button, and on phones the floating button would cover form fields above the keyboard.
+ * - Hidden state uses `inert`, so it leaves the tab order and the accessibility tree.
+ */
+import { WHATSAPP_URL } from "../lib/site";
+import WhatsAppIcon from "./WhatsAppIcon.astro";
+---
+
+<a
+  id="whatsapp-fab"
+  href={WHATSAPP_URL}
+  target="_blank"
+  rel="noopener noreferrer"
+  class="fixed right-4 bottom-4 z-40 inline-flex size-14 items-center justify-center gap-2 rounded-full bg-whatsapp text-ink-950 shadow-lg shadow-ink-950/60 transition-[opacity,transform,background-color] hover:bg-whatsapp-strong motion-reduce:transition-none sm:right-6 sm:bottom-6 sm:size-auto sm:h-12 sm:px-5 print:hidden data-[hidden]:pointer-events-none data-[hidden]:translate-y-4 data-[hidden]:opacity-0"
+>
+  <WhatsAppIcon class="size-7 sm:size-6" />
+  <span class="sr-only font-mono text-sm font-medium sm:not-sr-only">WhatsApp me</span>
+  <span class="sr-only">(opens in a new tab)</span>
+</a>
+
+<script>
+  const fab = document.getElementById("whatsapp-fab");
+  const contact = document.getElementById("contact");
+  if (fab && contact && "IntersectionObserver" in window) {
+    // The bottom margin counts the section as on screen only once it reaches the
+    // upper 60% of the viewport, not when its heading first peeks in.
+    new IntersectionObserver(
+      ([entry]) => {
+        const hide = entry?.isIntersecting ?? false;
+        fab.toggleAttribute("data-hidden", hide);
+        fab.toggleAttribute("inert", hide);
+      },
+      { rootMargin: "0px 0px -40% 0px" },
+    ).observe(contact);
+  }
+</script>

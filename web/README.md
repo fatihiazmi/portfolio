@@ -56,7 +56,16 @@ The form switches to `mailto:` mode in these cases. The send button then opens t
 
 The Turnstile script and the health probe load only when the form is within 400 px of the viewport, or on first focus.
 The `mailto:` address is `CONTACT_EMAIL` in `src/lib/site.ts`.
-A WhatsApp link sits above the form. Number and greeting: `WHATSAPP_DISPLAY` and `WHATSAPP_URL` in `src/lib/site.ts`.
+WhatsApp: a button in the contact section and a floating button on every page (`src/components/WhatsAppFab.astro`).
+The floating button hides while the contact section fills the upper 60% of the screen.
+Number and greeting: `WHATSAPP_DISPLAY` and `WHATSAPP_URL` in `src/lib/site.ts`.
+
+Accessibility rules for the form:
+
+- Validation runs in script. Each invalid field gets `aria-invalid` and an inline error. Focus moves to the first one.
+- Controls are at least 44 px tall. Inputs use 16 px text, so iOS does not zoom on focus.
+- Text on WhatsApp green uses `ink-950` (9.5:1). White text fails at 2:1.
+- Turnstile uses the full-width widget. Forms under 300 px wide get the compact widget.
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md).
 

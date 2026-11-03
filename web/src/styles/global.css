@@ -19,6 +19,9 @@
   --color-muted: #8aa4c2;
   --color-cyan: #5cc8ff;
   --color-amber: #ffb547;
+  /* WhatsApp brand green. Text and glyph on it use ink-950: 9.5:1. White would be 2:1. */
+  --color-whatsapp: #25d366;
+  --color-whatsapp-strong: #1fb855;
 
   --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
