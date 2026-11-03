@@ -6,7 +6,9 @@ Cost: free tier. 500 builds a month.
 
 ## 1. Create the project
 
-1. `dash.cloudflare.com` → **Workers & Pages** → **Create** → **Pages** tab → **Connect to Git**.
+1. `dash.cloudflare.com` → **Workers & Pages** → **Create** → **Pages** tab, or the link "Looking to deploy Pages? Get started" → **Import an existing Git repository**.
+
+   The default **Create** flow makes a Worker, not a Pages project. A Worker has no deploy hooks. Check: the Pages setup screen has **Framework preset** and **Build output directory**. A screen with **Deploy command** `npx wrangler deploy` is the Worker flow.
 2. Authorise the Cloudflare GitHub app for `fatihiazmi/portfolio` only, not all repositories.
 3. Select `fatihiazmi/portfolio` → **Begin setup**.
 
@@ -14,7 +16,7 @@ Cost: free tier. 500 builds a month.
 
 | Field | Value |
 |---|---|
-| Project name | `portfolio` |
+| Project name | `nik-portfolio` |
 | Production branch | `main` |
 | Framework preset | Astro |
 | Build command | `pnpm build` |
