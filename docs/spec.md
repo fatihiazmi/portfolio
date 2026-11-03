@@ -353,7 +353,7 @@ portfolio/
 ## 11. Security checklist
 
 - The LXC runs unprivileged. Docker runs inside it.
-- The tunnel routes `api.<domain>` to `localhost:8000` only.
+- The tunnel routes `api.<domain>` to `http://api:8000` on the compose network only. The API port binds to `127.0.0.1` on the LXC.
 - Secrets live in an `.env` file on the LXC, never in git: Turnstile secret, Resend key, R2 keys, Proxmox token, deploy hook URL, IP hash salt.
 - All SQL uses bound parameters.
 - Admin write requests must carry an `X-Requested-With: admin` header. FastAPI rejects writes without it. This blocks cross-site form posts that ride the Access cookie.

@@ -1,0 +1,37 @@
+# Stack for the `app` LXC. Spec section 2.
+# Run from this directory: docker compose up -d --build
+# Secrets: ./.env (mode 600, never committed). Keys listed in /.env.example.
+name: portfolio
+
+services:
+  api:
+    build: ../../api
+    image: portfolio-api:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_PATH: /data/portfolio.db
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://fatihiazmi.dev}
+    volumes:
+      - /var/lib/portfolio/data:/data
+    # Loopback only. The tunnel reaches the API over the compose network.
+    ports:
+      - "127.0.0.1:8000:8000"
+    mem_limit: 192m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --metrics 0.0.0.0:2000 run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:?set CLOUDFLARED_TUNNEL_TOKEN in infra/app/.env}
+    depends_on:
+      api:
+        condition: service_healthy
+    mem_limit: 96m
+    logging: *logging
