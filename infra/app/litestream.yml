@@ -1,0 +1,24 @@
+# Litestream for the `app` LXC. Spec section 2, plan T6.
+# Replicates /data/portfolio.db to the R2 backup bucket.
+# Values in ${...} come from ./.env.litestream. Litestream expands them at load.
+# An unset variable expands to an empty string, and replication then fails at start.
+
+# Metrics for Prometheus (T20). Reachable on the compose network only.
+addr: ":9090"
+
+# One full snapshot each hour. Keeps 7 days of point-in-time restore.
+# The `BackupStale` alert (spec 7a.4) fires when the last snapshot is older than 1 hour.
+snapshot:
+  interval: 1h
+  retention: 168h
+
+dbs:
+  - path: /data/portfolio.db
+    replica:
+      type: s3
+      bucket: ${R2_BACKUP_BUCKET}
+      path: portfolio
+      endpoint: https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com
+      region: auto
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
