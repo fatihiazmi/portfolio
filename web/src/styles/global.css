@@ -1,0 +1,80 @@
+@import "tailwindcss";
+@import "@fontsource/ibm-plex-sans/latin-400.css";
+@import "@fontsource/ibm-plex-sans/latin-600.css";
+@import "@fontsource/ibm-plex-mono/latin-400.css";
+@import "@fontsource/ibm-plex-mono/latin-500.css";
+
+/*
+  Blueprint tokens. One dark theme: the site is drawn on blueprint paper.
+  Text contrast on ink-900: paper 15:1, muted 6.7:1, cyan 9:1, amber 10:1.
+  Use them as Tailwind utilities: bg-ink-900, text-paper, border-line, text-amber.
+*/
+@theme {
+  --color-ink-950: #06121f;
+  --color-ink-900: #0a1c30;
+  --color-ink-800: #10284a;
+  --color-line: #1c4270;
+  --color-line-strong: #3b7bc0;
+  --color-paper: #e6eef7;
+  --color-muted: #8aa4c2;
+  --color-cyan: #5cc8ff;
+  --color-amber: #ffb547;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Blueprint grid: minor and major line spacing. */
+  --grid-minor: 24px;
+  --grid-major: 120px;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background-color: var(--color-ink-900);
+    color: var(--color-paper);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-ink-900);
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-line) 55%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-line) 55%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--color-line) 25%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--color-line) 25%, transparent) 1px,
+        transparent 1px
+      );
+    background-size:
+      var(--grid-major) var(--grid-major),
+      var(--grid-major) var(--grid-major),
+      var(--grid-minor) var(--grid-minor),
+      var(--grid-minor) var(--grid-minor);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--color-cyan);
+    color: var(--color-ink-950);
+  }
+}

@@ -1,0 +1,83 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const SITE_NAME = "fatihiazmi";
+const {
+  title,
+  description = "Full-stack engineer. I build the systems organisations run their day on.",
+} = Astro.props;
+const pageTitle = title ? `${title} · ${SITE_NAME}` : SITE_NAME;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const year = new Date().getFullYear();
+
+const nav = [
+  { href: "/#work", label: "Work" },
+  { href: "/stack", label: "Stack" },
+  { href: "/#contact", label: "Contact" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#0a1c30" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+  </head>
+  <body class="flex flex-col antialiased">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:bg-amber focus:px-3 focus:py-2 focus:font-mono focus:text-ink-950"
+    >
+      Skip to content
+    </a>
+
+    <header class="border-b border-line bg-ink-900/80 backdrop-blur">
+      <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <a href="/" class="font-mono text-sm font-medium tracking-wide text-paper">
+          <span class="text-cyan">◇</span>
+          {SITE_NAME}
+        </a>
+        <nav aria-label="Main">
+          <ul class="flex gap-5 font-mono text-sm text-muted sm:gap-8">
+            {
+              nav.map((item) => (
+                <li>
+                  <a href={item.href} class="transition-colors hover:text-paper">
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="mx-auto w-full max-w-6xl flex-1 px-4 py-12 sm:px-6">
+      <slot />
+    </main>
+
+    <footer class="border-t border-line">
+      <div
+        class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 font-mono text-xs text-muted sm:px-6"
+      >
+        <span>© {year} {SITE_NAME}</span>
+        <a href="https://github.com/fatihiazmi" class="hover:text-paper">github.com/fatihiazmi</a>
+      </div>
+    </footer>
+  </body>
+</html>
