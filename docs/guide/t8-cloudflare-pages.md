@@ -47,7 +47,17 @@ Commits to `api/`, `infra/`, or `docs/` then skip the build. Deploy hooks still 
 
 1. **Custom domains → Set up a custom domain** → `fatihiazmi.dev` → **Continue** → **Activate domain**.
 2. Cloudflare creates the DNS record in the zone. The certificate is ready in a few minutes.
-3. Optional: add `www.fatihiazmi.dev` the same way. Then add a redirect rule from `www` to the apex.
+3. Add `www.fatihiazmi.dev` the same way. Without it, `www.` returns "site can't be reached".
+4. Zone `fatihiazmi.dev` → **Rules → Overview → Templates → Redirect from WWW to root** → **Create a rule**. Check the fields, then **Deploy**:
+
+| Field | Value |
+|---|---|
+| When | Hostname equals `www.fatihiazmi.dev` |
+| Then | Dynamic redirect: `concat("https://fatihiazmi.dev", http.request.uri.path)` |
+| Status code | `301` |
+| Preserve query string | on |
+
+Check: `curl -sI https://www.fatihiazmi.dev/stack | head -3` shows `301` and `location: https://fatihiazmi.dev/stack`.
 
 ## 5. Deploy hook
 
