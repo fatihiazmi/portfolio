@@ -55,7 +55,7 @@ Failure rule: the build falls back to the snapshot committed in the repo when th
 | Feature | Behaviour when the homelab is down |
 |---|---|
 | All static pages and the 3D map | Stay up on Pages. |
-| Contact form | Shows a `mailto:` link with the message pre-filled. |
+| Contact form | Shows a `mailto:` link with the message pre-filled. The WhatsApp link stays up. |
 | `/stack` | Shows "Homelab offline since <last seen>". This is honest and still a proof point. |
 | Admin | Down. Acceptable. |
 
@@ -154,6 +154,8 @@ On submit:
 4. Store the lead. Store a salted hash of the IP, never the raw IP.
 5. Send one notification email to the owner.
 6. Show a confirmation: "Thanks. I reply within 2 working days."
+
+WhatsApp: a `wa.me` link to `+60 11-5421 3066` sits above the form. It works when the homelab is down. WhatsApp leads skip SQLite and do not appear in the admin Leads screen.
 
 ## 7. `/stack` page
 

@@ -11,7 +11,13 @@
  * The Turnstile script and the health probe load only when the form is near the
  * viewport, so the home page ships no third-party script on first paint.
  */
-import { API_URL, CONTACT_EMAIL, TURNSTILE_SITE_KEY } from "../lib/site";
+import {
+  API_URL,
+  CONTACT_EMAIL,
+  TURNSTILE_SITE_KEY,
+  WHATSAPP_DISPLAY,
+  WHATSAPP_URL,
+} from "../lib/site";
 
 if (!TURNSTILE_SITE_KEY) {
   console.warn("[contact] PUBLIC_TURNSTILE_SITE_KEY is not set. The form builds in mailto mode.");
@@ -42,6 +48,16 @@ const label = "font-mono text-xs tracking-wide text-muted uppercase";
   data-email={CONTACT_EMAIL}
   data-sitekey={TURNSTILE_SITE_KEY ?? ""}
 >
+  <p class="mb-6 text-sm text-muted">
+    Prefer chat? WhatsApp me at
+    <a
+      class="text-amber underline"
+      href={WHATSAPP_URL}
+      target="_blank"
+      rel="noopener noreferrer">{WHATSAPP_DISPLAY}</a
+    >.
+  </p>
+
   <noscript>
     <p class="border border-line bg-ink-800/60 p-4 text-muted">
       The form needs JavaScript. Email me at

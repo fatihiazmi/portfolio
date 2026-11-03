@@ -56,6 +56,7 @@ The form switches to `mailto:` mode in these cases. The send button then opens t
 
 The Turnstile script and the health probe load only when the form is within 400 px of the viewport, or on first focus.
 The `mailto:` address is `CONTACT_EMAIL` in `src/lib/site.ts`.
+A WhatsApp link sits above the form. Number and greeting: `WHATSAPP_DISPLAY` and `WHATSAPP_URL` in `src/lib/site.ts`.
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md).
 
