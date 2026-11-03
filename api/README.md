@@ -29,6 +29,37 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 |---|---|---|
 | `DATABASE_PATH` | `data/portfolio.db` | SQLite file. Its directory is created on start. |
 | `CORS_ORIGIN` | `http://localhost:4321` | The one origin allowed by CORS. Astro dev runs on port 4321. |
+| `IMAGES_BASE_URL` | `https://img.fatihiazmi.dev` | Base URL for image and diagram keys in R2. |
+
+## Public endpoints
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/api/health` | `{"ok": true}`, or 503 when SQLite does not answer. |
+| GET | `/api/projects` | `{"projects": [...], "edges": [{"source", "target", "label"}]}`. Published projects only, in `sort_order`. |
+| GET | `/api/projects/{slug}` | One published project. 404 for an unknown slug and for a draft. |
+
+Rules:
+
+- Edges appear only when both ends are published.
+- Images appear only when `scrubbed = 1`, even on a published project.
+- `stack` is a JSON array. `diagram_url` and image `url` are built from `IMAGES_BASE_URL`.
+- Internal columns stay out: `id`, `published`, `sort_order`, `diagram_key`.
+
+## Seed
+
+```bash
+uv run python -m portfolio_api.seed             # 7 draft projects and their edges
+uv run python -m portfolio_api.seed --publish   # local dev only: seeded rows are published
+```
+
+The seed inserts by `slug` and never overwrites an existing row. All seed text is a draft. The owner replaces it in T19.
+
+On the `app` LXC:
+
+```bash
+docker compose -f /opt/portfolio/infra/app/docker-compose.yml exec api python -m portfolio_api.seed
+```
 
 ## Migrations
 

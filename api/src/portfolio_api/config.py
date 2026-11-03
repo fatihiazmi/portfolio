@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     database_path: Path = Path("data/portfolio.db")
     cors_origin: str = "http://localhost:4321"
+    # Public base URL of the R2 images bucket. Image and diagram keys are appended to it.
+    images_base_url: str = "https://img.fatihiazmi.dev"
 
 
 @lru_cache

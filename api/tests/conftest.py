@@ -10,7 +10,11 @@ from portfolio_api.main import create_app
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(database_path=tmp_path / "test.db", cors_origin="https://fatihiazmi.dev")
+    return Settings(
+        database_path=tmp_path / "test.db",
+        cors_origin="https://fatihiazmi.dev",
+        images_base_url="https://img.test/",
+    )
 
 
 @pytest.fixture

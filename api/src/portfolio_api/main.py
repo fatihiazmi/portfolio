@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from portfolio_api import projects
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
 
@@ -23,6 +24,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if applied:
             log.info("applied migrations: %s", ", ".join(applied))
         app.state.db = conn
+        app.state.settings = settings
         try:
             yield
         finally:
@@ -46,6 +48,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             log.exception("health check: database error")
             return JSONResponse({"ok": False}, status_code=503)
         return JSONResponse({"ok": True})
+
+    app.include_router(projects.router)
 
     return app
 
