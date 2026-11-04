@@ -8,7 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from portfolio_api import contact, projects
+from portfolio_api import admin, contact, projects
+from portfolio_api.admin_auth import AccessVerifier, admin_gate
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
 
@@ -19,7 +20,7 @@ HTTP_TIMEOUT = httpx.Timeout(10.0)
 
 
 def create_app(settings: Settings | None = None, http: httpx.Client | None = None) -> FastAPI:
-    """Build the app. Tests pass `http` with a mock transport for Turnstile and Resend."""
+    """Build the app. Tests pass `http` with a mock transport for Turnstile, Resend, and Access."""
     settings = settings or get_settings()
 
     @asynccontextmanager
@@ -31,6 +32,10 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
         if not settings.contact_ready:
             log.warning("contact form off: set IP_HASH_SALT and TURNSTILE_SECRET")
         client = http or httpx.Client(timeout=HTTP_TIMEOUT)
+        if settings.admin_ready:
+            app.state.access = AccessVerifier(settings, client)
+        else:
+            log.warning("admin off: set CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD, and ADMIN_EMAIL")
         app.state.db = conn
         app.state.settings = settings
         app.state.http = client
@@ -43,6 +48,7 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
 
     app = FastAPI(title="portfolio-api", lifespan=lifespan, docs_url=None, redoc_url=None)
 
+    app.middleware("http")(admin_gate)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.cors_origin],
@@ -62,6 +68,7 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
 
     app.include_router(projects.router)
     app.include_router(contact.router)
+    app.include_router(admin.router)
 
     return app
 

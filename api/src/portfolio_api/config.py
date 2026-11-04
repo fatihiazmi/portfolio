@@ -24,6 +24,18 @@ class Settings(BaseSettings):
     # domain, including a subdomain, gets 403 from Resend.
     lead_from_email: str = "fatihiazmi.dev <leads@fatihiazmi.dev>"
 
+    # Admin gate, spec 9.2. Any empty value turns `/admin*` and `/api/admin*` off with a 503.
+    # Team domain, for example `fatihiazmi.cloudflareaccess.com`.
+    cf_access_team_domain: str = ""
+    # Application Audience (AUD) tag of the Access application.
+    cf_access_aud: str = ""
+    # The one email allowed in. The Access policy allows the same email.
+    admin_email: str = ""
+
+    @property
+    def admin_ready(self) -> bool:
+        return bool(self.cf_access_team_domain and self.cf_access_aud and self.admin_email)
+
     @property
     def contact_ready(self) -> bool:
         return bool(self.ip_hash_salt and self.turnstile_secret)

@@ -35,8 +35,11 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `RESEND_API_KEY` | empty | Resend key. Empty: leads are stored, no email. |
 | `LEAD_NOTIFY_EMAIL` | empty | Inbox for lead emails. Empty: no email. |
 | `LEAD_FROM_EMAIL` | `fatihiazmi.dev <leads@fatihiazmi.dev>` | Sender on the Resend-verified domain. Another domain gets 403. |
+| `CF_ACCESS_TEAM_DOMAIN` | empty | Access team domain, `<team>.cloudflareaccess.com`. Empty: admin returns 503. |
+| `CF_ACCESS_AUD` | empty | AUD tag of the `portfolio-admin` Access application. Empty: admin returns 503. |
+| `ADMIN_EMAIL` | empty | The one email allowed into admin. Empty: admin returns 503. |
 
-Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md).
+Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md).
 
 ## Public endpoints
 
@@ -53,6 +56,24 @@ Rules:
 - Images appear only when `scrubbed = 1`, even on a published project.
 - `stack` is a JSON array. `diagram_url` and image `url` are built from `IMAGES_BASE_URL`.
 - Internal columns stay out: `id`, `published`, `sort_order`, `diagram_key`.
+
+## Admin gate
+
+`src/portfolio_api/admin_auth.py` checks every request to `/admin*` and `/api/admin*`. Spec section 9.2.
+
+| Step | Check | Result on fail |
+|---|---|---|
+| 1 | `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD`, and `ADMIN_EMAIL` set | 503 |
+| 2 | `Cf-Access-Jwt-Assertion` header present | 403 |
+| 3 | RS256 signature from the team certs, `aud`, `iss`, `exp`, `iat` | 403 |
+| 4 | JWT `email` equals `ADMIN_EMAIL`, any case | 403 |
+| 5 | POST, PUT, PATCH, DELETE carry `X-Requested-With: admin` | 403 |
+
+Rules:
+
+- Team keys are cached for 1 hour. An unknown `kid` refetches them, at most once a minute.
+- A certs fetch error keeps the old keys and never grants access.
+- `GET /api/admin/me` returns `{"email": ...}` for the logged-in admin.
 
 ## Contact
 
