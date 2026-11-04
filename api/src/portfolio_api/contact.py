@@ -26,6 +26,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from portfolio_api.config import Settings
+from portfolio_api.lead_email import Lead, render
 
 log = logging.getLogger("portfolio_api.contact")
 
@@ -98,31 +99,17 @@ def _turnstile_ok(http: httpx.Client, secret: str, token: str, ip: str) -> bool:
     return False
 
 
-def _one_line(value: str) -> str:
-    return " ".join(value.split())
-
-
-def _send_notification(
-    http: httpx.Client, settings: Settings, lead_id: int, lead: ContactIn
-) -> None:
+def _send_notification(http: httpx.Client, settings: Settings, lead: Lead) -> None:
     """Email the owner. Runs after the response. Errors are logged, never raised."""
-    lines = [
-        f"Kind: {lead.kind}",
-        f"Budget: {lead.budget or '-'}",
-        f"Name: {lead.name}",
-        f"Email: {lead.email}",
-        f"Company: {lead.company or '-'}",
-        "",
-        lead.message,
-        "",
-        f"Lead #{lead_id}. Reply to this email to answer the sender.",
-    ]
+    lead_id = lead.id
+    email = render(lead)
     payload = {
         "from": settings.lead_from_email,
         "to": [settings.lead_notify_email],
         "reply_to": lead.email,
-        "subject": _one_line(f"[{lead.kind}] New lead from {lead.name}")[:200],
-        "text": "\n".join(lines),
+        "subject": email.subject,
+        "text": email.text,
+        "html": email.html,
     }
     try:
         res = http.post(
@@ -195,9 +182,17 @@ def create_lead(body: ContactIn, request: Request, background: BackgroundTasks) 
     log.info("contact: lead %s stored, kind=%s", lead_id, body.kind)
 
     if settings.email_ready:
-        background.add_task(
-            _send_notification, http, settings, lead_id, body.model_copy(update={"budget": budget})
+        lead = Lead(
+            id=lead_id,
+            created_at=now,
+            name=body.name,
+            email=str(body.email),
+            company=body.company or None,
+            kind=body.kind,
+            budget=budget,
+            message=body.message,
         )
+        background.add_task(_send_notification, http, settings, lead)
     else:
         log.warning("lead %s: RESEND_API_KEY or LEAD_NOTIFY_EMAIL not set, no email", lead_id)
     return OK

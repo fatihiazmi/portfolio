@@ -127,9 +127,10 @@ def test_notification_email_sent(contact_client: TestClient, upstream: FakeUpstr
     assert body["to"] == ["owner@example.com"]
     assert body["from"] == "Site <leads@send.example.com>"
     assert body["reply_to"] == "aisyah@example.com"
-    assert body["subject"] == "[freelance] New lead from Aisyah Rahman"
+    assert body["subject"] == "New lead: Aisyah Rahman, Acme Sdn Bhd · Freelance project"
     assert "We need a maintenance system for 40 sites." in body["text"]
-    assert "Budget: RM10k–50k" in body["text"]
+    assert "RM10k – RM50k" in body["text"]
+    assert "We need a maintenance system for 40 sites." in body["html"]
 
 
 def test_honeypot_returns_ok_and_stores_nothing(
@@ -207,7 +208,7 @@ def test_budget_dropped_unless_freelance(
     contact_client.post("/api/contact", json=_form(kind="hiring"), headers=HEADERS)
     [lead] = _leads(db)
     assert lead["budget"] is None
-    assert "Budget: -" in json.loads(upstream.emails[0].content)["text"]
+    assert "Budget" not in json.loads(upstream.emails[0].content)["text"]
 
 
 def test_optional_fields_can_be_omitted(contact_client: TestClient, db: sqlite3.Connection) -> None:
