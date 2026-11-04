@@ -62,7 +62,8 @@ def _db(request: Request) -> sqlite3.Connection:
     return request.app.state.db
 
 
-def _asset_url(request: Request, key: str) -> str:
+def asset_url(request: Request, key: str) -> str:
+    """Public URL of an R2 key under `IMAGES_BASE_URL`."""
     base: str = request.app.state.settings.images_base_url
     return f"{base.rstrip('/')}/{quote(key)}"
 
@@ -83,7 +84,7 @@ def _images(
     rows = conn.execute(sql, project_ids).fetchall()
     for row in rows:
         by_project[row["project_id"]].append(
-            Image(url=_asset_url(request, row["r2_key"]), alt=row["alt"], caption=row["caption"])
+            Image(url=asset_url(request, row["r2_key"]), alt=row["alt"], caption=row["caption"])
         )
     return by_project
 
@@ -94,7 +95,7 @@ def _project(request: Request, row: sqlite3.Row, images: list[Image]) -> Project
     return Project(
         **data,
         stack=json.loads(row["stack"]),
-        diagram_url=_asset_url(request, diagram) if diagram else None,
+        diagram_url=asset_url(request, diagram) if diagram else None,
         images=images,
     )
 

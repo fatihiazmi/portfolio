@@ -38,8 +38,13 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `CF_ACCESS_TEAM_DOMAIN` | empty | Access team domain, `<team>.cloudflareaccess.com`. Empty: admin returns 503. |
 | `CF_ACCESS_AUD` | empty | AUD tag of the `portfolio-admin` Access application. Empty: admin returns 503. |
 | `ADMIN_EMAIL` | empty | The one email allowed into admin. Empty: admin returns 503. |
+| `R2_ACCOUNT_ID` | empty | Cloudflare account ID. Any `R2_*` empty: uploads return 503. |
+| `R2_IMAGES_BUCKET` | empty | Images bucket, `portfolio-images`. |
+| `R2_ACCESS_KEY_ID` | empty | R2 token scoped to the images bucket. |
+| `R2_SECRET_ACCESS_KEY` | empty | Secret of the same token. |
+| `PAGES_DEPLOY_HOOK_URL` | empty | Pages deploy hook. Empty: publish returns 503. |
 
-Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md).
+Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md), [`docs/guide/t16-r2-images.md`](../docs/guide/t16-r2-images.md).
 
 ## Public endpoints
 
@@ -74,6 +79,53 @@ Rules:
 - Team keys are cached for 1 hour. An unknown `kid` refetches them, at most once a minute.
 - A certs fetch error keeps the old keys and never grants access.
 - `GET /api/admin/me` returns `{"email": ...}` for the logged-in admin.
+
+## Admin endpoints
+
+All sit behind the admin gate. Writes need `X-Requested-With: admin`. Spec section 9.2.
+
+| Method | Path | Body | Returns |
+|---|---|---|---|
+| GET | `/api/admin/summary` | — | Lead and project counts, `blocking_images`, `last_publish`. `last_backup_at` is `null` until T20. |
+| GET | `/api/admin/projects` | — | `{"projects": [...], "edges": [{"from_id", "to_id", "label"}]}`. Drafts and unscrubbed images included. |
+| POST | `/api/admin/projects` | Project fields. `slug`, `title`, `kind`, `summary` required. | 201 with the project. 409 on a used slug. |
+| GET | `/api/admin/projects/{id}` | — | One project with its images. |
+| PATCH | `/api/admin/projects/{id}` | Any project fields. `null` clears a nullable field. | The project. 409 on a used slug. |
+| DELETE | `/api/admin/projects/{id}` | — | 204. Removes its edges, image rows, and R2 objects. |
+| PUT | `/api/admin/projects/order` | `{"ids": [...]}`, every project id once | 204. `sort_order` becomes 10, 20, 30... |
+| PUT | `/api/admin/edges` | `{"edges": [{"from_id", "to_id", "label"}]}` | The new edge list. Replaces every edge. |
+| POST | `/api/admin/projects/{id}/images` | Multipart: `file`, `alt`, optional `caption` | 201 with the image, `scrubbed: false`. |
+| PUT | `/api/admin/projects/{id}/diagram` | Multipart: `file`, SVG only | The project with the new `diagram_key`. The old object is removed. |
+| PATCH | `/api/admin/images/{id}` | Any of `alt`, `caption`, `sort_order`, `scrubbed` | The image. |
+| DELETE | `/api/admin/images/{id}` | — | 204. On an R2 error: 502, and the row stays. |
+| GET | `/api/admin/leads` | Query: `kind`, `status`, `limit` (1–200, default 50), `offset` | `{"leads": [...], "total": n}`, newest first. No IP hash. |
+| PATCH | `/api/admin/leads/{id}` | `{"status": "new" \| "replied" \| "closed"}` | The lead. |
+| POST | `/api/admin/publish` | — | The publish record. 409 with `image_ids` when the scrub rule fails. |
+
+Field rules:
+
+- `slug`: lowercase letters, digits, and single hyphens, max 60.
+- `stack`: up to 20 tags, 1–40 chars each.
+- `repo_url`: `http://` or `https://` only.
+- `map_x`, `map_z`: −100 to 100.
+- An empty string in an optional text field is stored as `NULL`.
+- Unknown fields: 422.
+
+Uploads (spec section 11):
+
+- Types: PNG, JPEG, WebP, SVG. The type comes from the file bytes, never from the name or `Content-Type`. Anything else: 415.
+- Size: 5 MB max. Larger: 413.
+- SVG: parsed with `defusedxml`. A DTD is rejected. Elements outside an SVG drawing allowlist are removed: `script`, `foreignObject`, `a`, animation. `on*` attributes, external `href`, external `url(...)`, and `@import` are removed.
+- JPEG EXIF is not stripped. Phone photos can carry GPS. Upload screenshots, not photos.
+- Keys: `<slug>/<16 hex>.<ext>`, diagrams `<slug>/diagram-<16 hex>.svg`. Objects are cached for one year, so a key never changes content.
+- The file goes to R2 before the row is written. An R2 error returns 502 and stores nothing.
+
+Publish:
+
+1. `PAGES_DEPLOY_HOOK_URL` empty: 503.
+2. Any image of a published project has `scrubbed = 0`: 409 `{"detail", "image_ids"}`. Draft projects never block.
+3. POST to the deploy hook. An error: 502. The hook URL never appears in the response or the log.
+4. Each hook call adds a row to `publishes`.
 
 ## Contact
 

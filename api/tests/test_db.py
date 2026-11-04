@@ -36,7 +36,7 @@ def test_migrate_creates_spec_tables(conn: sqlite3.Connection) -> None:
 
 def test_migrate_is_idempotent(tmp_path: Path) -> None:
     c = db.connect(tmp_path / "t.db")
-    assert db.migrate(c) == ["0001_init", "0002_leads_rate_limit"]
+    assert db.migrate(c) == ["0001_init", "0002_leads_rate_limit", "0003_publishes"]
     assert db.migrate(c) == []
 
 
@@ -99,3 +99,21 @@ def test_failed_migration_rolls_back(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert "extra" not in tables
     versions = {r[0] for r in c.execute("SELECT version FROM schema_migrations")}
     assert versions == {v for v, _ in real}
+
+
+def test_transaction_commits(tmp_path: Path) -> None:
+    path = tmp_path / "t.db"
+    db.migrate(db.connect(path))
+    with db.transaction(path) as tx:
+        _project(tx, "a")
+        _project(tx, "b")
+    assert db.connect(path).execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 2
+
+
+def test_transaction_rolls_back_on_error(tmp_path: Path) -> None:
+    path = tmp_path / "t.db"
+    db.migrate(db.connect(path))
+    with pytest.raises(sqlite3.IntegrityError), db.transaction(path) as tx:
+        _project(tx, "a")
+        _project(tx, "a")
+    assert db.connect(path).execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 0

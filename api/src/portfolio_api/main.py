@@ -8,10 +8,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from portfolio_api import admin, contact, projects
+from portfolio_api import admin, admin_projects, contact, projects
 from portfolio_api.admin_auth import AccessVerifier, admin_gate
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
+from portfolio_api.r2 import R2
 
 log = logging.getLogger("portfolio_api")
 
@@ -36,6 +37,11 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
             app.state.access = AccessVerifier(settings, client)
         else:
             log.warning("admin off: set CF_ACCESS_TEAM_DOMAIN, CF_ACCESS_AUD, and ADMIN_EMAIL")
+        app.state.r2 = R2(settings, client) if settings.images_ready else None
+        if app.state.r2 is None:
+            log.warning("image uploads off: set the R2_* keys for the images bucket")
+        if not settings.pages_deploy_hook_url:
+            log.warning("publish off: set PAGES_DEPLOY_HOOK_URL")
         app.state.db = conn
         app.state.settings = settings
         app.state.http = client
@@ -69,6 +75,7 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
     app.include_router(projects.router)
     app.include_router(contact.router)
     app.include_router(admin.router)
+    app.include_router(admin_projects.router)
 
     return app
 

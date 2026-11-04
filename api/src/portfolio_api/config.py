@@ -32,6 +32,23 @@ class Settings(BaseSettings):
     # The one email allowed in. The Access policy allows the same email.
     admin_email: str = ""
 
+    # R2 images bucket, spec 9.2. Any empty value turns image and diagram uploads off with a 503.
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_images_bucket: str = ""
+    # Cloudflare Pages deploy hook. Empty: `POST /api/admin/publish` returns 503.
+    pages_deploy_hook_url: str = ""
+
+    @property
+    def images_ready(self) -> bool:
+        return bool(
+            self.r2_account_id
+            and self.r2_access_key_id
+            and self.r2_secret_access_key
+            and self.r2_images_bucket
+        )
+
     @property
     def admin_ready(self) -> bool:
         return bool(self.cf_access_team_domain and self.cf_access_aud and self.admin_email)

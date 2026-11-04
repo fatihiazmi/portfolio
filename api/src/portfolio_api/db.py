@@ -2,6 +2,7 @@
 
 import sqlite3
 from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from importlib import resources
 from pathlib import Path
@@ -23,6 +24,27 @@ def connect(path: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA busy_timeout = 5000")
     return conn
+
+
+@contextmanager
+def transaction(path: Path) -> Iterator[sqlite3.Connection]:
+    """Run a multi-statement write on its own connection, in one `BEGIN IMMEDIATE` transaction.
+
+    The app's shared connection serves every thread. A `BEGIN` on it from two requests
+    at once would fail or mix their statements. A separate connection keeps each
+    transaction whole. `busy_timeout` makes a second writer wait for the first.
+    """
+    conn = connect(path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield conn
+        except BaseException:
+            conn.execute("ROLLBACK")
+            raise
+        conn.execute("COMMIT")
+    finally:
+        conn.close()
 
 
 def _migration_files() -> list[tuple[str, str]]:
