@@ -121,13 +121,21 @@ export function mountMap(opts: MapOptions): MapHandle {
     paper: token("paper"),
   };
 
+  // Reduced motion: one still frame. No drift, pulses, glow fades, parallax, or flights.
+  // The scene renders again only when hover, focus, selection, or size changes.
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  let still = reducedMotion.matches;
+
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: "low-power" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Spec 4.4: touch devices cap at 1.5. Others cap at 2.
+  const coarse = matchMedia("(pointer: coarse)").matches;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, coarse ? 1.5 : 2));
   renderer.setClearColor(color.ink950);
   const canvas = renderer.domElement;
   canvas.setAttribute("aria-hidden", "true");
-  canvas.style.cssText =
-    "position:absolute;inset:0;width:100%;height:100%;opacity:0;transition:opacity 400ms";
+  canvas.style.cssText = `position:absolute;inset:0;width:100%;height:100%;opacity:0;${
+    still ? "" : "transition:opacity 400ms"
+  }`;
   host.append(canvas);
 
   const scene = new Scene();
@@ -256,6 +264,10 @@ export function mountMap(opts: MapOptions): MapHandle {
   let inset = 0;
   let labelSlug: string | null = null;
 
+  // Render loop state. The loop runs only while the canvas is on screen.
+  let frameId = 0;
+  let onScreen = false;
+
   function overviewView(): View {
     // Fit the map box. Ground depth shows foreshortened by the camera elevation.
     const tanV = Math.tan((FOV * Math.PI) / 360);
@@ -297,6 +309,7 @@ export function mountMap(opts: MapOptions): MapHandle {
     // Snap to the view for the current selection. A resize mid-flight ends the flight.
     from = to = viewFor(selected, inset);
     flightStart = -Infinity;
+    invalidate();
   }
   resize();
   new ResizeObserver(resize).observe(host);
@@ -320,26 +333,42 @@ export function mountMap(opts: MapOptions): MapHandle {
     pointerSlug = pick(e);
     parallaxGoal.copy(ndc);
     canvas.style.cursor = pointerSlug ? "pointer" : "";
+    invalidate();
   });
   canvas.addEventListener("pointerleave", () => {
     pointerSlug = null;
     parallaxGoal.set(0, 0);
     canvas.style.cursor = "";
+    invalidate();
   });
   canvas.addEventListener("click", (e) => opts.onPick(pick(e)));
 
-  // Render loop. Runs only while the canvas is on screen.
+  // Render loop. With motion, every frame schedules the next.
+  // In reduced motion, each `invalidate()` draws one frame.
   const startedAt = performance.now();
   const anchor = new Vector3();
   let last = startedAt;
-  let frameId = 0;
   let ready = false;
 
+  function invalidate() {
+    if (onScreen && !frameId) frameId = requestAnimationFrame(frame);
+  }
+
+  reducedMotion.addEventListener("change", () => {
+    still = reducedMotion.matches;
+    invalidate();
+  });
+
   function frame(now: number) {
-    frameId = requestAnimationFrame(frame);
+    frameId = 0;
     const dt = Math.min((now - last) / 1000, 0.1);
     last = now;
-    const t = (now - startedAt) / 1000;
+    // A still frame is the scene at time 0 with every transition finished.
+    const t = still ? 0 : (now - startedAt) / 1000;
+    if (still) {
+      flightStart = -Infinity;
+      parallaxGoal.set(0, 0);
+    }
 
     const drift = (t * DRIFT) % GRID_MAJOR;
     grid.position.set(gridOrigin.x + drift, 0, gridOrigin.z + drift);
@@ -351,7 +380,7 @@ export function mountMap(opts: MapOptions): MapHandle {
     }
 
     const shown = pointerSlug ?? focusSlug;
-    const ease = 1 - Math.exp(-dt * 10);
+    const ease = still ? 1 : 1 - Math.exp(-dt * 10);
     for (const [slug, v] of views) {
       const goal = slug === shown || slug === selected ? 1 : 0;
       v.glow += (goal - v.glow) * ease;
@@ -364,7 +393,7 @@ export function mountMap(opts: MapOptions): MapHandle {
     const e = k < 0.5 ? 4 * k * k * k : 1 - (-2 * k + 2) ** 3 / 2;
     current.position.lerpVectors(from.position, to.position, e);
     current.target.lerpVectors(from.target, to.target, e);
-    parallax.lerp(parallaxGoal, 1 - Math.exp(-dt * 4));
+    parallax.lerp(parallaxGoal, still ? 1 : 1 - Math.exp(-dt * 4));
     camera.position
       .copy(current.position)
       .add(anchor.set(parallax.x * PARALLAX, parallax.y * PARALLAX * 0.6, 0));
@@ -378,6 +407,7 @@ export function mountMap(opts: MapOptions): MapHandle {
       canvas.style.opacity = "1";
       opts.onReady();
     }
+    if (!still) invalidate();
   }
 
   function placeLabel(slug: string | null) {
@@ -395,10 +425,11 @@ export function mountMap(opts: MapOptions): MapHandle {
   }
 
   new IntersectionObserver(([entry]) => {
-    if (entry?.isIntersecting && !frameId) {
+    onScreen = entry?.isIntersecting ?? false;
+    if (onScreen) {
       last = performance.now();
-      frameId = requestAnimationFrame(frame);
-    } else if (!entry?.isIntersecting && frameId) {
+      invalidate();
+    } else if (frameId) {
       cancelAnimationFrame(frameId);
       frameId = 0;
     }
@@ -407,11 +438,13 @@ export function mountMap(opts: MapOptions): MapHandle {
   return {
     highlight(slug) {
       focusSlug = slug;
+      invalidate();
     },
     select(slug, insetRight = 0) {
       selected = slug;
       inset = insetRight;
       flyTo(viewFor(slug, insetRight));
+      invalidate();
     },
   };
 }

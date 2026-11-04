@@ -61,7 +61,7 @@ const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
       data-chip={chip}
       hidden
       aria-labelledby="map-panel-title"
-      class="border-t border-line bg-ink-900/95 p-5 sm:absolute sm:inset-y-0 sm:right-0 sm:w-72 sm:overflow-y-auto sm:border-t-0 sm:border-l"
+      class="border-t border-line bg-ink-900 p-5 sm:absolute sm:inset-y-0 sm:right-0 sm:w-72 sm:overflow-y-auto sm:border-t-0 sm:border-l"
     >
       <div class="flex items-start justify-between gap-3">
         <div>
@@ -247,6 +247,11 @@ const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
       (n): n is NodeData & MapNode => n.x !== null && n.z !== null,
     );
     if (placed.length === 0) return;
+    // No WebGL: keep the SVG and skip the 3D download.
+    if (!hasWebGL()) {
+      console.info("[map] No WebGL. Showing the static map.");
+      return;
+    }
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -285,6 +290,18 @@ const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
       } catch (err) {
         console.warn("[map] 3D map unavailable. Keeping the static map.", err);
       }
+    }
+  }
+
+  /** True when the browser can create a WebGL context. The probe context is released at once. */
+  function hasWebGL(): boolean {
+    try {
+      const canvas = document.createElement("canvas");
+      const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+      gl?.getExtension("WEBGL_lose_context")?.loseContext();
+      return gl !== null;
+    } catch {
+      return false;
     }
   }
 </script>

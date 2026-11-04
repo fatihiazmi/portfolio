@@ -48,11 +48,14 @@ pnpm snapshot
 |---|---|
 | First paint | Static SVG from `MapStatic.astro`. |
 | Map within 200 px of the viewport | `src/lib/map/scene.ts` and three.js load as one lazy chunk. The canvas fades in over the SVG. |
-| WebGL or the chunk fails | The SVG stays. The console logs `[map] 3D map unavailable`. |
+| No WebGL | The SVG stays, and the 3D chunk never downloads. The console logs `[map] No WebGL`. |
+| The chunk or the scene fails | The SVG stays. The console logs `[map] 3D map unavailable`. |
+| `prefers-reduced-motion: reduce` | One still frame. No drift, pulses, parallax, or flights. Hover, focus, and selection redraw that one frame. |
 
 - The node list under the canvas holds every project. `Tab` moves through it, and `Enter` opens the side panel.
 - Projects without `map_x` and `map_z` appear in the list only.
 - The render loop stops while the map is off screen.
+- Pixel ratio caps at 1.5 on touch devices and at 2 elsewhere. The scene has no post-processing.
 - The 3D chunk measures 133 KB gzipped at three.js 0.186.1. Budget: 300 KB.
 
 ## Contact form
