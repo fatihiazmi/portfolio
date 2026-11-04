@@ -11,17 +11,18 @@ FastAPI serves the build at `api.fatihiazmi.dev/admin`. Cloudflare Access guards
 | Dashboard | `/admin/` | New leads, published projects, blocking images, last publish, newest leads. |
 | Projects | `/admin/projects` | List with drag reorder. **Save order** applies the new order. |
 | Project edit | `/admin/projects/:id`, `/admin/projects/new` | All fields. Markdown sections with a Write / Preview toggle. One **Save** sends the whole form. |
+| Map editor | `/admin/map`, `/admin/map?project=:id` | Top-down SVG of the 3D map. Drag a node to set `map_x` and `map_z`. Click two nodes to add or remove a road. **Save map** sends every change. |
 | Images | `/admin/images?project=:id` | Upload, alt, caption, scrubbed, drag reorder. **Save changes** sends every edit. |
 | Leads | `/admin/leads` | Filter by kind and status. A status change saves at once. |
 | Publish | Header button, every screen | Starts a Pages build. A 409 lists the unscrubbed images. |
-
-Map editor: plan T18.
 
 Rules:
 
 - Uploads, image removals, diagram uploads, and lead status changes apply at once. Everything else waits for its Save button.
 - Leaving a screen with unsaved edits asks first.
 - The markdown preview uses the same rules as `web/src/lib/markdown.ts`. Change both files together.
+- The map editor owns `map_x` and `map_z`. The project form shows them and links to the editor. Node ring sizes copy `SIZE` in `web/src/lib/map/scene.ts`. Change both files together.
+- The map editor warns when two node rings overlap. The live map would draw them on top of each other.
 - An expired Access session shows "Your admin login expired". Reload the page to log in again.
 
 ## Dev

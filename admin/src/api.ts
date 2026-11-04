@@ -8,6 +8,7 @@
  *   Those become `ApiError` with `sessionExpired = true`. The fix is a page reload.
  */
 import type {
+  AdminEdge,
   AdminImage,
   AdminProject,
   AdminProjectList,
@@ -16,6 +17,7 @@ import type {
   LeadKind,
   LeadList,
   LeadStatus,
+  MapPosition,
   ProjectInput,
   Publish,
   Summary,
@@ -109,6 +111,8 @@ export const api = {
     request<AdminProject>("PATCH", `/projects/${id}`, input),
   deleteProject: (id: number) => request<void>("DELETE", `/projects/${id}`),
   saveOrder: (ids: number[]) => request<void>("PUT", "/projects/order", { ids }),
+  moveProject: (id: number, at: MapPosition) => request<AdminProject>("PATCH", `/projects/${id}`, at),
+  saveEdges: (edges: AdminEdge[]) => request<{ edges: AdminEdge[] }>("PUT", "/edges", { edges }),
 
   uploadImage: (projectId: number, file: File, alt: string, caption: string) => {
     const form = new FormData();

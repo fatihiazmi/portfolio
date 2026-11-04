@@ -17,6 +17,7 @@ export const router = createRouter({
       component: () => import("./views/ProjectEditView.vue"),
       props: (route) => ({ id: Number(route.params.id) }),
     },
+    { path: "/map", name: "map", component: () => import("./views/MapEditorView.vue") },
     { path: "/images", name: "images", component: () => import("./views/ImagesView.vue") },
     { path: "/leads", name: "leads", component: () => import("./views/LeadsView.vue") },
     { path: "/:rest(.*)*", redirect: "/" },

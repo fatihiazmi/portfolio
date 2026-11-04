@@ -39,7 +39,7 @@ export interface AdminProject {
   images: AdminImage[];
 }
 
-/** The fields the edit form sends. `null` clears a nullable field. */
+/** The fields the edit form sends. `null` clears a nullable field. The map editor owns `map_x` and `map_z`. */
 export type ProjectInput = Pick<
   AdminProject,
   | "slug"
@@ -54,8 +54,6 @@ export type ProjectInput = Pick<
   | "outcome_md"
   | "stack"
   | "repo_url"
-  | "map_x"
-  | "map_z"
   | "published"
 >;
 
@@ -63,6 +61,12 @@ export interface AdminEdge {
   from_id: number;
   to_id: number;
   label: string | null;
+}
+
+/** Node position from the map editor. `null` on both takes the project off the map. */
+export interface MapPosition {
+  map_x: number | null;
+  map_z: number | null;
 }
 
 export interface AdminProjectList {

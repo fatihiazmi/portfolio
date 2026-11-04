@@ -49,8 +49,6 @@ interface Form {
   outcome_md: string;
   stack: string[];
   repo_url: string;
-  map_x: number | null;
-  map_z: number | null;
   published: boolean;
 }
 
@@ -68,8 +66,6 @@ function emptyForm(): Form {
     outcome_md: "",
     stack: [],
     repo_url: "",
-    map_x: null,
-    map_z: null,
     published: false,
   };
 }
@@ -88,8 +84,6 @@ function fromProject(p: AdminProject): Form {
     outcome_md: p.outcome_md ?? "",
     stack: [...p.stack],
     repo_url: p.repo_url ?? "",
-    map_x: p.map_x,
-    map_z: p.map_z,
     published: p.published,
   };
 }
@@ -111,8 +105,6 @@ function toInput(f: Form): ProjectInput {
     outcome_md: md(f.outcome_md),
     stack: f.stack.map((s) => s.trim()).filter(Boolean),
     repo_url: f.kind === "client" ? null : opt(f.repo_url),
-    map_x: f.map_x,
-    map_z: f.map_z,
     published: f.published,
   };
 }
@@ -411,17 +403,23 @@ onBeforeRouteLeave(() =>
             <span v-else class="hint">Available after the project is created.</span>
             <span class="hint">Uploads right away. The API strips scripts and external links.</span>
           </div>
-          <div class="row-2">
-            <div class="field">
-              <label for="f-mx">Map X</label>
-              <InputNumber v-model="form.map_x" input-id="f-mx" :min="-100" :max="100" :max-fraction-digits="2" fluid />
+          <div class="field">
+            <span class="field-label">Map position</span>
+            <div class="panel-head">
+              <span v-if="project && project.map_x !== null && project.map_z !== null" class="mono">
+                x {{ project.map_x }}, z {{ project.map_z }}
+              </span>
+              <span v-else class="muted">Not on the map</span>
+              <RouterLink
+                v-if="project"
+                class="more"
+                :to="{ name: 'map', query: { project: project.id } }"
+              >
+                Open map editor <i class="pi pi-arrow-right" aria-hidden="true" />
+              </RouterLink>
             </div>
-            <div class="field">
-              <label for="f-mz">Map Z</label>
-              <InputNumber v-model="form.map_z" input-id="f-mz" :min="-100" :max="100" :max-fraction-digits="2" fluid />
-            </div>
+            <span v-if="!project" class="hint">Available after the project is created.</span>
           </div>
-          <span class="hint">The map editor replaces these two fields in T18.</span>
         </div>
       </aside>
     </div>

@@ -86,6 +86,7 @@ const PULSES_PER_ROAD = 2;
 /** Camera shift at the canvas edge, map units. */
 const PARALLAX = 0.5;
 
+/** The admin map editor (`admin/src/views/MapEditorView.vue`) copies the ring radii. Change both. */
 const SIZE = {
   client: { width: 1.4, height: 0.9, ring: 1.25 },
   personal: { width: 0.8, height: 0.5, ring: 0.8 },

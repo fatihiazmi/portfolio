@@ -15,6 +15,7 @@ const CRUMBS: Record<string, string[]> = {
   projects: ["projects"],
   "project-new": ["projects", "new"],
   "project-edit": ["projects", "edit"],
+  map: ["map"],
   images: ["images"],
   leads: ["leads"],
 };
@@ -74,10 +75,9 @@ watch(
           <RouterLink class="nav-link" :to="{ name: 'images' }">
             <i class="pi pi-images" aria-hidden="true" /> Images
           </RouterLink>
-          <span class="nav-link disabled" aria-disabled="true">
+          <RouterLink class="nav-link" :to="{ name: 'map' }">
             <i class="pi pi-map" aria-hidden="true" /> Map editor
-            <span class="nav-soon">T18</span>
-          </span>
+          </RouterLink>
         </div>
         <div class="nav-group">
           <span class="nav-label">Inbox</span>
