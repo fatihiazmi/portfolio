@@ -1,0 +1,5 @@
+node_modules
+dist
+# Dev JWT written by api/scripts/dev_admin.py
+.env
+.env.*

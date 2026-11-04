@@ -34,6 +34,8 @@ From the Proxmox host shell:
 pct exec 202 -- bash -c 'cd /opt/portfolio && git pull --ff-only && cd infra/app && docker compose up -d --build'
 ```
 
+The build also bundles the admin SPA from `admin/` (plan T17). Compose passes it through `additional_contexts`, which needs Docker Compose 2.17 or later on the LXC.
+
 ### Check
 
 ```bash

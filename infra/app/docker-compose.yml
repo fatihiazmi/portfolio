@@ -5,7 +5,11 @@ name: portfolio
 
 services:
   api:
-    build: ../../api
+    build:
+      context: ../../api
+      # Admin SPA source for the `admin` build stage. Plan T17.
+      additional_contexts:
+        admin-src: ../../admin
     image: portfolio-api:local
     restart: unless-stopped
     env_file: .env

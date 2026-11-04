@@ -43,6 +43,7 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `R2_ACCESS_KEY_ID` | empty | R2 token scoped to the images bucket. |
 | `R2_SECRET_ACCESS_KEY` | empty | Secret of the same token. |
 | `PAGES_DEPLOY_HOOK_URL` | empty | Pages deploy hook. Empty: publish returns 503. |
+| `ADMIN_UI_DIR` | `api/static/admin` | Admin SPA build. No `index.html` there: `/admin/` returns 503. |
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md), [`docs/guide/t16-r2-images.md`](../docs/guide/t16-r2-images.md).
 
@@ -126,6 +127,19 @@ Publish:
 2. Any image of a published project has `scrubbed = 0`: 409 `{"detail", "image_ids"}`. Draft projects never block.
 3. POST to the deploy hook. An error: 502. The hook URL never appears in the response or the log.
 4. Each hook call adds a row to `publishes`.
+
+## Admin UI
+
+FastAPI serves the Vue build from `ADMIN_UI_DIR` at `/admin`. The admin gate runs first. Source and dev setup: [`admin/README.md`](../admin/README.md).
+
+| Path | Returns |
+|---|---|
+| `/admin` | 307 to `/admin/`. |
+| `/admin/assets/*` | The file, cached for one year. Names carry a content hash. |
+| `/admin/<file>` | The file, `Cache-Control: no-cache`. A missing path with an extension: 404. |
+| Any other `/admin/*` | `index.html`, so the Vue router handles the path. |
+
+The image builds the SPA in its own stage. Locally, `pnpm build` in `admin/` writes the build to `api/static/admin`.
 
 ## Contact
 

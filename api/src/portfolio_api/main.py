@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from portfolio_api import admin, admin_projects, contact, projects
+from portfolio_api import admin, admin_projects, admin_ui, contact, projects
 from portfolio_api.admin_auth import AccessVerifier, admin_gate
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
@@ -76,6 +76,7 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
     app.include_router(contact.router)
     app.include_router(admin.router)
     app.include_router(admin_projects.router)
+    app.include_router(admin_ui.router)
 
     return app
 

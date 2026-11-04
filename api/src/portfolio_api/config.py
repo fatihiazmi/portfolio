@@ -3,6 +3,9 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# `api/`. The package installs in editable mode, in the image too, so this is `/app` there.
+API_ROOT = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
     """Runtime settings. Values come from env vars or `.env`. See `/.env.example`."""
@@ -39,6 +42,8 @@ class Settings(BaseSettings):
     r2_images_bucket: str = ""
     # Cloudflare Pages deploy hook. Empty: `POST /api/admin/publish` returns 503.
     pages_deploy_hook_url: str = ""
+    # Admin SPA build, served at `/admin`. Plan T17. No `index.html` there: `/admin/` returns 503.
+    admin_ui_dir: Path = API_ROOT / "static" / "admin"
 
     @property
     def images_ready(self) -> bool:
