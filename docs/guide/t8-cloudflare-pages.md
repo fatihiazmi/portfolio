@@ -34,16 +34,20 @@ Node comes from `web/.node-version` (24.13.1). `API_URL` is not needed. The defa
 
 Click **Save and Deploy**. The first build takes 1–2 minutes. It ends with a `*.pages.dev` URL.
 
-## 3. Limit builds to web changes
+## 3. Skip builds for non-web changes
 
-**Settings → Builds → Build watch paths**:
+**Settings → Builds → Build watch paths** → **Edit**:
 
 | Field | Value |
 |---|---|
-| Include paths | `web/*` |
-| Exclude paths | empty |
+| Include paths | `*` |
+| Exclude paths | `api/*, admin/*, infra/*, docs/*` |
 
-Commits to `api/`, `infra/`, or `docs/` then skip the build. Deploy hooks still build every time.
+Commits that only touch `api/`, `admin/`, `infra/`, or `docs/` skip the build. Any other change builds. Deploy hooks build every time.
+
+Use excludes, not `Include: web/*`. On 2026-11-03, `Include: web/*` skipped pushes `73596c8` and `d10eb22`, which changed only `web/src/` files and `docs/plan.md`. The cause is unconfirmed. If an exclude fails to match, you get an extra build. If an include fails to match, a deploy is lost.
+
+Check after a web push: **Deployments** shows a new build for the commit, not "skipped".
 
 ## 4. Custom domain
 
