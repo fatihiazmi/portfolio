@@ -1,0 +1,117 @@
+---
+/**
+ * One-page resume for hiring managers. Spec section 3.
+ *
+ * Built only from data the site already has: name, positioning, contact, project data.
+ * DRAFT(resume): experience and education wait for the owner's resume content (plan section 4, Day 10).
+ * The PDF link shows once `RESUME_PDF` in `src/lib/site.ts` names a file in `public/`.
+ */
+import Base from "../layouts/Base.astro";
+import { getProjects } from "../lib/projects";
+import {
+  CONTACT_EMAIL,
+  OWNER_NAME,
+  POSITIONING,
+  RESUME_PDF,
+  WHATSAPP_DISPLAY,
+  WHATSAPP_URL,
+} from "../lib/site";
+
+const { projects } = await getProjects();
+
+// Stack tags across all projects, most used first.
+const counts = new Map<string, number>();
+for (const p of projects) for (const s of p.stack) counts.set(s, (counts.get(s) ?? 0) + 1);
+const stack = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([s]) => s);
+
+const contacts = [
+  { label: "Email", value: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}`, external: false },
+  { label: "WhatsApp", value: WHATSAPP_DISPLAY, href: WHATSAPP_URL, external: true },
+  { label: "GitHub", value: "github.com/fatihiazmi", href: "https://github.com/fatihiazmi", external: true },
+];
+
+const heading = "font-mono text-sm tracking-[0.2em] text-muted uppercase";
+---
+
+<Base title="Resume" description={`${OWNER_NAME}: ${POSITIONING}`}>
+  <article aria-labelledby="resume-name" class="max-w-3xl">
+    <header class="flex flex-wrap items-start justify-between gap-6 pb-10">
+      <div>
+        <h1 id="resume-name" class="text-4xl font-semibold">{OWNER_NAME}</h1>
+        <p class="mt-3 max-w-xl text-lg text-muted">{POSITIONING}</p>
+      </div>
+      {
+        RESUME_PDF && (
+          <a
+            href={RESUME_PDF}
+            download
+            class="inline-flex min-h-11 items-center bg-amber px-5 font-mono text-sm font-medium text-ink-950 transition-colors hover:bg-paper motion-reduce:transition-none"
+          >
+            Download PDF
+          </a>
+        )
+      }
+    </header>
+
+    <section aria-labelledby="resume-contact" class="border-t border-line py-8">
+      <h2 id="resume-contact" class={heading}>Contact</h2>
+      <dl class="mt-4 grid gap-3 font-mono text-sm sm:grid-cols-3">
+        {
+          contacts.map((c) => (
+            <div>
+              <dt class="text-xs text-muted">{c.label}</dt>
+              <dd class="mt-1">
+                <a
+                  href={c.href}
+                  class="inline-flex min-h-11 items-center text-cyan hover:text-paper"
+                  {...(c.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
+                  {c.value}
+                  {c.external && <span class="sr-only"> (opens in a new tab)</span>}
+                </a>
+              </dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    {
+      stack.length > 0 && (
+        <section aria-labelledby="resume-stack" class="border-t border-line py-8">
+          <h2 id="resume-stack" class={heading}>Stack</h2>
+          <ul class="mt-4 flex flex-wrap gap-1.5">
+            {stack.map((s) => (
+              <li class="border border-line px-2 py-0.5 font-mono text-xs text-paper">{s}</li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    {
+      projects.length > 0 && (
+        <section aria-labelledby="resume-work" class="border-t border-line py-8">
+          <h2 id="resume-work" class={heading}>Selected work</h2>
+          <ul class="mt-4 grid gap-6">
+            {projects.map((p) => (
+              <li>
+                <p class="font-mono text-xs text-muted">
+                  {[p.kind === "client" ? "Client system" : "Personal build", p.client, p.year]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                <h3 class="mt-1 font-semibold">
+                  <a href={`/work/${p.slug}`} class="hover:text-cyan">
+                    {p.title}
+                  </a>
+                </h3>
+                <p class="mt-1 text-sm text-muted">{p.summary}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </article>
+</Base>

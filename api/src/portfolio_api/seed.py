@@ -2,6 +2,8 @@
 
 Run: `python -m portfolio_api.seed` (uses `DATABASE_PATH`).
 Local only: add `--publish` to mark the seeded rows published, for Astro dev.
+Local only: add `--demo` to add `template-demo`, a published project that fills every
+case study field (spec section 5). Its image files live in `api/demo/`.
 
 Inserts are keyed on `slug` and never overwrite an existing row, so a run after
 the owner edits a project in the admin changes nothing.
@@ -135,6 +137,86 @@ EDGES: list[tuple[str, str, str]] = [
 ]
 
 
+# Local demo for the case study template (plan T13). Text describes the template only.
+# No position on the map: it shows in the node list and on `/work/template-demo`.
+DEMO_SLUG = "template-demo"
+DEMO_PROJECT = {
+    "slug": DEMO_SLUG,
+    "title": "Template demo",
+    "client": "Demo client",
+    "kind": "client",
+    "year": 2026,
+    "summary": "Local demo project. It fills every case study field for a template check.",
+    "problem_md": (
+        "The client needed one place to see every open job. Teams tracked work in"
+        " spreadsheets, and nobody knew which jobs were late.\n\n"
+        "This paragraph is demo text. Real case studies replace it in plan T19."
+    ),
+    "built_md": (
+        "- **Job register** with status, owner, and due date\n"
+        "- **Approvals** in two steps, with an audit trail\n"
+        "- **Reports** exported as CSV for finance\n"
+    ),
+    "decisions_md": (
+        "1. **PostgreSQL row-level security.** Each site sees only its own jobs.\n"
+        "2. **Server-side pagination.** Lists stay fast past 100 000 rows.\n"
+        "3. **`idempotency_key` on writes.** A double tap never creates two jobs.\n"
+    ),
+    "outcome_md": (
+        "- **12** sites on the system\n"
+        "- **40 000** jobs recorded\n"
+        "- Demo numbers only. See [the plan](https://github.com/fatihiazmi).\n"
+    ),
+    "stack": ["React", "TypeScript", "PostgreSQL"],
+    "diagram_key": f"{DEMO_SLUG}/diagram.svg",
+}
+DEMO_IMAGES = [
+    (f"{DEMO_SLUG}/screen-1.svg", "Demo screenshot: job list", "Job list with filters."),
+    (f"{DEMO_SLUG}/screen-2.svg", "Demo screenshot: approval form", "Two-step approval."),
+    (f"{DEMO_SLUG}/screen-3.svg", "Demo screenshot: report export", None),
+]
+
+
+def seed_demo(conn: sqlite3.Connection) -> bool:
+    """Insert the published demo project and its scrubbed images. False when it exists."""
+    conn.execute("BEGIN")
+    try:
+        d = DEMO_PROJECT
+        cur = conn.execute(
+            "INSERT INTO projects (slug, title, client, kind, year, summary, problem_md,"
+            " built_md, decisions_md, outcome_md, stack, diagram_key, sort_order, published,"
+            " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 999, 1, ?)"
+            " ON CONFLICT (slug) DO NOTHING",
+            (
+                d["slug"],
+                d["title"],
+                d["client"],
+                d["kind"],
+                d["year"],
+                d["summary"],
+                d["problem_md"],
+                d["built_md"],
+                d["decisions_md"],
+                d["outcome_md"],
+                json.dumps(d["stack"]),
+                d["diagram_key"],
+                datetime.now(UTC).isoformat(),
+            ),
+        )
+        if cur.rowcount:
+            pid = cur.lastrowid
+            conn.executemany(
+                "INSERT INTO project_images (project_id, r2_key, alt, caption, sort_order,"
+                " scrubbed) VALUES (?, ?, ?, ?, ?, 1)",
+                [(pid, key, alt, cap, i) for i, (key, alt, cap) in enumerate(DEMO_IMAGES)],
+            )
+        conn.execute("COMMIT")
+    except Exception:
+        conn.execute("ROLLBACK")
+        raise
+    return bool(cur.rowcount)
+
+
 def seed(conn: sqlite3.Connection, *, publish: bool = False) -> tuple[int, int]:
     """Insert missing projects and edges in one transaction.
 
@@ -187,13 +269,21 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--publish", action="store_true", help="Mark new rows published. Local dev only."
     )
+    parser.add_argument(
+        "--demo",
+        action="store_true",
+        help=f"Add the published `{DEMO_SLUG}` project. Local dev only.",
+    )
     args = parser.parse_args(argv)
     conn = connect(args.db or get_settings().database_path)
     migrate(conn)
     projects, edges = seed(conn, publish=args.publish)
+    demo = seed_demo(conn) if args.demo else False
     conn.close()
     state = "published" if args.publish else "draft"
     print(f"seeded {projects} projects ({state}) and {edges} edges")
+    if demo:
+        print(f"seeded demo project {DEMO_SLUG} (published)")
 
 
 if __name__ == "__main__":

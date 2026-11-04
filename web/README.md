@@ -34,6 +34,24 @@ DATABASE_PATH=/tmp/dev.db uv run uvicorn portfolio_api.main:app --port 8000
 cd ../web && API_URL=http://127.0.0.1:8000 pnpm dev
 ```
 
+Check the case study template with every section filled. `--demo` adds the local-only
+`template-demo` project. Its images come from `api/demo/`:
+
+```bash
+cd ../api && uv run python -m portfolio_api.seed --db /tmp/dev.db --publish --demo
+python3 -m http.server 8001 -b 127.0.0.1 -d demo &
+DATABASE_PATH=/tmp/dev.db IMAGES_BASE_URL=http://127.0.0.1:8001 uv run uvicorn portfolio_api.main:app --port 8000
+cd ../web && API_URL=http://127.0.0.1:8000 pnpm dev   # open /work/template-demo
+```
+
+## Pages
+
+| Route | Source | Notes |
+|---|---|---|
+| `/work/[slug]` | `src/pages/work/[slug].astro` | Spec section 5. A section with no data is left out. Markdown goes through `src/lib/markdown.ts`: raw HTML dropped, unsafe links and images reduced to text. |
+| `/resume` | `src/pages/resume.astro` | Contact, stack, and work from project data. Set `RESUME_PDF` in `src/lib/site.ts` to show the PDF link. |
+| `/404` | `src/pages/404.astro` | Pages serves `404.html` for any unknown path. |
+
 Refresh the fallback from the live API. Plan T26 runs this before launch:
 
 ```bash

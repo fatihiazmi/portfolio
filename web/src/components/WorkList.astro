@@ -2,7 +2,7 @@
 /**
  * Selected work: client systems first, then personal repos. Spec section 3.1, item 4.
  * Order within each group follows `sort_order` from the API.
- * T13 adds the "Read case study" link to `/work/[slug]`.
+ * Each card links to its case study at `/work/[slug]`.
  */
 import type { Project } from "../lib/projects";
 
@@ -44,17 +44,26 @@ const groups = [
                     ))}
                   </ul>
                 )}
-                {p.repo_url && (
+                <div class="mt-auto flex flex-wrap gap-x-5 pt-4 font-mono text-sm">
                   <a
-                    href={p.repo_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="mt-auto inline-flex min-h-11 items-center gap-1 self-start pt-4 font-mono text-sm text-cyan hover:text-paper"
+                    href={`/work/${p.slug}`}
+                    class="inline-flex min-h-11 items-center gap-1 text-cyan hover:text-paper"
                   >
-                    Source on GitHub <span aria-hidden="true">↗</span>
-                    <span class="sr-only">(opens in a new tab)</span>
+                    Read case study<span class="sr-only">: {p.title}</span>
+                    <span aria-hidden="true">→</span>
                   </a>
-                )}
+                  {p.repo_url && (
+                    <a
+                      href={p.repo_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="inline-flex min-h-11 items-center gap-1 text-muted hover:text-paper"
+                    >
+                      Source on GitHub <span aria-hidden="true">↗</span>
+                      <span class="sr-only">(opens in a new tab)</span>
+                    </a>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

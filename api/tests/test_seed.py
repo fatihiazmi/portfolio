@@ -67,3 +67,25 @@ def test_publish_flag_exposes_map_data(tmp_path: Path) -> None:
     assert len(body["projects"]) == 7
     assert len(body["edges"]) == len(seed.EDGES)
     assert all(p["map_x"] is not None and p["map_z"] is not None for p in body["projects"])
+
+
+def test_demo_fills_every_case_study_field(tmp_path: Path) -> None:
+    settings = Settings(database_path=tmp_path / "s.db", images_base_url="http://img.test")
+    seed.main(["--db", str(settings.database_path), "--demo"])
+    with TestClient(create_app(settings)) as client:
+        body = client.get(f"/api/projects/{seed.DEMO_SLUG}").json()
+    for field in ("client", "year", "problem_md", "built_md", "decisions_md", "outcome_md"):
+        assert body[field], field
+    assert body["stack"]
+    assert body["diagram_url"] == f"http://img.test/{seed.DEMO_SLUG}/diagram.svg"
+    assert len(body["images"]) == len(seed.DEMO_IMAGES)
+
+
+def test_demo_is_opt_in_and_idempotent(conn: sqlite3.Connection) -> None:
+    seed.seed(conn)
+    assert conn.execute("SELECT COUNT(*) FROM projects").fetchone()[0] == 7
+    assert seed.seed_demo(conn) is True
+    assert seed.seed_demo(conn) is False
+    assert conn.execute("SELECT COUNT(*) FROM project_images").fetchone()[0] == len(
+        seed.DEMO_IMAGES
+    )

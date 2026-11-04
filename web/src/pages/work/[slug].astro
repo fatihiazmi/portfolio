@@ -1,0 +1,190 @@
+---
+/**
+ * Case study page. Spec section 5: one section per database field, in template order.
+ * A section with no data is left out. Images come from the API already filtered to `scrubbed`.
+ */
+import Base from "../../layouts/Base.astro";
+import { renderMarkdown } from "../../lib/markdown";
+import { getProjects, type Project } from "../../lib/projects";
+import { WHATSAPP_URL } from "../../lib/site";
+
+export async function getStaticPaths() {
+  const { projects } = await getProjects();
+  return projects.map((project) => ({ params: { slug: project.slug }, props: { project } }));
+}
+
+interface Props {
+  project: Project;
+}
+
+const { project: p } = Astro.props;
+
+const meta = [
+  { term: "Role", value: "Builder" },
+  { term: "Client", value: p.client },
+  { term: "Year", value: p.year },
+].filter((m) => m.value !== null && m.value !== "");
+
+const md = (source: string | null) => (source ? renderMarkdown(source) : null);
+const problem = md(p.problem_md);
+const built = md(p.built_md);
+const decisions = md(p.decisions_md);
+const outcome = md(p.outcome_md);
+
+const heading = "font-mono text-sm tracking-[0.2em] text-muted uppercase";
+const row = "grid gap-4 border-t border-line py-10 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-10";
+---
+
+<Base title={p.title} description={p.summary}>
+  <article aria-labelledby="case-title">
+    <header class="pb-10">
+      <a
+        href="/#work"
+        class="inline-flex min-h-11 items-center gap-1 font-mono text-sm text-muted hover:text-paper"
+      >
+        <span aria-hidden="true">←</span> All work
+      </a>
+      <p class="mt-4 font-mono text-sm tracking-[0.2em] text-cyan uppercase">
+        {p.kind === "client" ? "Client system" : "Personal build"}
+      </p>
+      <h1 id="case-title" class="mt-2 text-4xl font-semibold sm:text-5xl">{p.title}</h1>
+      <p class="mt-4 max-w-2xl text-lg text-muted">{p.summary}</p>
+
+      <dl class="mt-8 flex flex-wrap gap-x-10 gap-y-4 font-mono text-sm">
+        {
+          meta.map((m) => (
+            <div>
+              <dt class="text-xs tracking-[0.2em] text-muted uppercase">{m.term}</dt>
+              <dd class="mt-1 text-paper">{m.value}</dd>
+            </div>
+          ))
+        }
+      </dl>
+
+      {
+        p.stack.length > 0 && (
+          <ul class="mt-6 flex flex-wrap gap-1.5" aria-label="Stack">
+            {p.stack.map((s) => (
+              <li class="border border-line px-2 py-0.5 font-mono text-xs text-paper">{s}</li>
+            ))}
+          </ul>
+        )
+      }
+
+      {
+        p.repo_url && (
+          <a
+            href={p.repo_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-6 inline-flex min-h-11 items-center gap-1 font-mono text-sm text-cyan hover:text-paper"
+          >
+            Source on GitHub <span aria-hidden="true">↗</span>
+            <span class="sr-only">(opens in a new tab)</span>
+          </a>
+        )
+      }
+    </header>
+
+    {
+      problem && (
+        <section aria-labelledby="problem" class={row}>
+          <h2 id="problem" class={heading}>Problem</h2>
+          <div class="prose-blueprint" set:html={problem} />
+        </section>
+      )
+    }
+
+    {
+      built && (
+        <section aria-labelledby="built" class={row}>
+          <h2 id="built" class={heading}>What I built</h2>
+          <div class="prose-blueprint" set:html={built} />
+        </section>
+      )
+    }
+
+    {
+      p.diagram_url && (
+        <section aria-labelledby="architecture" class={row}>
+          <h2 id="architecture" class={heading}>Architecture</h2>
+          <figure class="border border-line bg-ink-950/60 p-4">
+            <img
+              src={p.diagram_url}
+              alt={`Architecture diagram of ${p.title}.`}
+              loading="lazy"
+              decoding="async"
+              class="h-auto w-full"
+            />
+          </figure>
+        </section>
+      )
+    }
+
+    {
+      decisions && (
+        <section aria-labelledby="decisions" class={row}>
+          <h2 id="decisions" class={heading}>Key decisions</h2>
+          <div class="prose-blueprint" set:html={decisions} />
+        </section>
+      )
+    }
+
+    {
+      p.images.length > 0 && (
+        <section aria-labelledby="screenshots" class={row}>
+          <h2 id="screenshots" class={heading}>Screenshots</h2>
+          <div class="grid gap-8">
+            {p.images.map((img) => (
+              <figure>
+                <img
+                  src={img.url}
+                  alt={img.alt}
+                  loading="lazy"
+                  decoding="async"
+                  class="h-auto w-full border border-line"
+                />
+                {img.caption && (
+                  <figcaption class="mt-2 font-mono text-xs text-muted">{img.caption}</figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {
+      outcome && (
+        <section aria-labelledby="outcome" class={row}>
+          <h2 id="outcome" class={heading}>Outcome</h2>
+          <div class="prose-blueprint" set:html={outcome} />
+        </section>
+      )
+    }
+
+    <section aria-labelledby="next-step" class={row}>
+      <h2 id="next-step" class={heading}>Next step</h2>
+      <div>
+        <p class="text-2xl font-semibold text-balance">Need a system like this?</p>
+        <p class="mt-2 text-muted">Tell me what you need built. I reply within 2 working days.</p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <a
+            href="/#contact"
+            class="inline-flex min-h-11 items-center bg-amber px-5 font-mono text-sm font-medium text-ink-950 transition-colors hover:bg-paper motion-reduce:transition-none"
+          >
+            Start a project
+          </a>
+          <a
+            href={WHATSAPP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex min-h-11 items-center border border-line-strong px-5 font-mono text-sm font-medium transition-colors hover:border-paper motion-reduce:transition-none"
+          >
+            WhatsApp me <span class="sr-only">(opens in a new tab)</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  </article>
+</Base>

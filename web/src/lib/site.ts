@@ -15,6 +15,9 @@ export const WHATSAPP_URL = `https://wa.me/601154213066?text=${encodeURIComponen
   "Hi, I found you on fatihiazmi.dev.",
 )}`;
 
+/** Resume PDF under `public/`, for example "/resume.pdf". `null` hides the download link. */
+export const RESUME_PDF: string | null = null;
+
 /** Base URL of the FastAPI service. Build-time `API_URL` overrides it. */
 export const API_URL = (import.meta.env.API_URL ?? "https://api.fatihiazmi.dev").replace(/\/$/, "");
 
