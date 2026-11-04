@@ -5,7 +5,7 @@
  */
 import type { Edge, Project } from "../lib/projects";
 import { OWNER_NAME, POSITIONING } from "../lib/site";
-import MapPlaceholder from "./MapPlaceholder.astro";
+import SystemsMap from "./SystemsMap.astro";
 
 interface Props {
   projects: Project[];
@@ -46,5 +46,5 @@ const { projects, edges } = Astro.props;
     </div>
   </div>
 
-  <MapPlaceholder projects={projects} edges={edges} />
+  <SystemsMap projects={projects} edges={edges} />
 </section>

@@ -40,6 +40,21 @@ Refresh the fallback from the live API. Plan T26 runs this before launch:
 pnpm snapshot
 ```
 
+## Systems map
+
+`src/components/SystemsMap.astro` renders the hero map. Spec section 4.
+
+| Stage | What shows |
+|---|---|
+| First paint | Static SVG from `MapStatic.astro`. |
+| Map within 200 px of the viewport | `src/lib/map/scene.ts` and three.js load as one lazy chunk. The canvas fades in over the SVG. |
+| WebGL or the chunk fails | The SVG stays. The console logs `[map] 3D map unavailable`. |
+
+- The node list under the canvas holds every project. `Tab` moves through it, and `Enter` opens the side panel.
+- Projects without `map_x` and `map_z` appear in the list only.
+- The render loop stops while the map is off screen.
+- The 3D chunk measures 133 KB gzipped at three.js 0.186.1. Budget: 300 KB.
+
 ## Contact form
 
 `src/components/ContactForm.astro` posts JSON to `${API_URL}/api/contact`. Spec section 6.

@@ -1,0 +1,290 @@
+---
+/**
+ * Hero systems map. Spec section 4.
+ *
+ * First paint shows the static SVG (`MapStatic.astro`). When the map comes within 200 px
+ * of the viewport, the 3D scene (`src/lib/map/scene.ts`) loads and fades in over it.
+ * The node list under the canvas carries every project for keyboards, screen readers, and search.
+ * List buttons and canvas clicks open the same side panel.
+ * Without WebGL, the SVG stays, and the list and panel still work.
+ */
+import type { Edge, Project } from "../lib/projects";
+import MapStatic from "./MapStatic.astro";
+
+interface Props {
+  projects: Project[];
+  edges: Edge[];
+}
+
+const { projects, edges } = Astro.props;
+
+const data = {
+  nodes: projects.map((p) => ({
+    slug: p.slug,
+    title: p.title,
+    kind: p.kind,
+    client: p.client,
+    year: p.year,
+    summary: p.summary,
+    stack: p.stack,
+    x: p.map_x,
+    z: p.map_z,
+  })),
+  roads: edges.map((e) => ({ source: e.source, target: e.target })),
+};
+// Escape `<` so project text can never close the script element.
+const json = JSON.stringify(data).replace(/</g, "\\u003c");
+
+const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
+---
+
+<figure data-map class="border border-line bg-ink-950/60">
+  <div class="relative">
+    <div data-map-stage class="relative aspect-[4/3] overflow-hidden sm:aspect-[16/10]">
+      <div data-map-poster class="absolute inset-0">
+        <MapStatic projects={projects} edges={edges} />
+      </div>
+      <p
+        data-map-label
+        hidden
+        aria-hidden="true"
+        class="pointer-events-none absolute top-0 left-0 z-10 -mt-2 max-w-60 border border-line-strong bg-ink-900/95 px-3 py-2"
+      >
+        <span data-field="title" class="block font-mono text-sm text-paper"></span>
+        <span data-field="summary" class="mt-0.5 block text-xs text-muted"></span>
+      </p>
+    </div>
+
+    <section
+      id="map-panel"
+      data-map-panel
+      data-chip={chip}
+      hidden
+      aria-labelledby="map-panel-title"
+      class="border-t border-line bg-ink-900/95 p-5 sm:absolute sm:inset-y-0 sm:right-0 sm:w-72 sm:overflow-y-auto sm:border-t-0 sm:border-l"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p data-field="meta" class="font-mono text-xs text-muted"></p>
+          <h2
+            id="map-panel-title"
+            data-field="title"
+            tabindex="-1"
+            class="mt-1 text-lg font-semibold"
+          >
+          </h2>
+        </div>
+        <button
+          type="button"
+          data-map-close
+          aria-label="Close project panel"
+          class="-mt-3 -mr-3 inline-flex size-11 shrink-0 items-center justify-center font-mono text-muted transition-colors hover:text-paper motion-reduce:transition-none"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+      <p data-field="summary" class="mt-3 text-sm text-muted"></p>
+      <ul data-field="stack" aria-label="Stack" class="mt-4 flex flex-wrap gap-1.5"></ul>
+      <a
+        data-field="link"
+        href="#work"
+        class="mt-5 inline-flex min-h-11 items-center gap-1 font-mono text-sm text-cyan hover:text-paper"
+      >
+        Read case study<span data-field="link-title" class="sr-only"></span>
+        <span aria-hidden="true">→</span>
+      </a>
+    </section>
+  </div>
+
+  {
+    projects.length > 0 && (
+      <ul
+        data-map-list
+        aria-label="Projects on the map"
+        class="flex flex-wrap gap-2 border-t border-line px-4 py-3"
+      >
+        {projects.map((p) => (
+          <li>
+            <button
+              type="button"
+              data-slug={p.slug}
+              aria-expanded="false"
+              aria-controls="map-panel"
+              class="inline-flex min-h-11 items-center gap-2 border border-line px-3 font-mono text-xs text-paper transition-colors hover:border-line-strong aria-expanded:border-cyan aria-expanded:text-cyan motion-reduce:transition-none"
+            >
+              <span
+                aria-hidden="true"
+                class={`size-2 rounded-full ${p.kind === "client" ? "bg-cyan" : "border border-cyan"}`}
+              />
+              {p.title}
+              <span class="sr-only">
+                , {p.kind === "client" ? "client system" : "personal build"}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+
+  <figcaption
+    class="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 font-mono text-xs text-muted"
+  >
+    <span>Systems map: projects as nodes, shared domains as roads.</span>
+    <span class="flex items-center gap-4" aria-hidden="true">
+      <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-cyan"></span>Client</span>
+      <span class="flex items-center gap-1.5"
+        ><span class="size-2 rounded-full border border-cyan"></span>Personal</span
+      >
+    </span>
+  </figcaption>
+
+  <script is:inline type="application/json" data-map-data set:html={json} />
+</figure>
+
+<script>
+  import type { MapHandle, MapNode } from "../lib/map/scene";
+
+  interface NodeData {
+    slug: string;
+    title: string;
+    kind: "client" | "personal";
+    client: string | null;
+    year: number | null;
+    summary: string;
+    stack: string[];
+    x: number | null;
+    z: number | null;
+  }
+
+  interface MapData {
+    nodes: NodeData[];
+    roads: { source: string; target: string }[];
+  }
+
+  const root = document.querySelector<HTMLElement>("[data-map]");
+  if (root) init(root);
+
+  function init(root: HTMLElement) {
+    const $ = <T extends Element = HTMLElement>(el: ParentNode, selector: string) => {
+      const found = el.querySelector<T>(selector);
+      if (!found) throw new Error(`[map] missing element ${selector}`);
+      return found;
+    };
+    const field = <T extends Element = HTMLElement>(el: ParentNode, name: string) =>
+      $<T>(el, `[data-field="${name}"]`);
+
+    const data = JSON.parse($(root, "[data-map-data]").textContent ?? "") as MapData;
+    const bySlug = new Map(data.nodes.map((n) => [n.slug, n]));
+    const stage = $(root, "[data-map-stage]");
+    const poster = $(root, "[data-map-poster]");
+    const label = $(root, "[data-map-label]");
+    const panel = $(root, "[data-map-panel]");
+    const buttons = [...root.querySelectorAll<HTMLButtonElement>("[data-map-list] button")];
+    // At this width and up, the panel overlays the right of the canvas. Below it, it sits under it.
+    const overlay = matchMedia("(min-width: 40rem)");
+
+    let map: MapHandle | undefined;
+    let open: string | null = null;
+
+    const insetRight = () => (overlay.matches ? panel.offsetWidth : 0);
+
+    function show(slug: string, focusPanel: boolean) {
+      const node = bySlug.get(slug);
+      if (!node) return;
+      open = slug;
+
+      field(panel, "meta").textContent =
+        [node.client, node.year].filter(Boolean).join(" · ") ||
+        (node.kind === "client" ? "Client system" : "Personal build");
+      field(panel, "title").textContent = node.title;
+      field(panel, "summary").textContent = node.summary;
+      const stack = field(panel, "stack");
+      stack.hidden = node.stack.length === 0;
+      stack.replaceChildren(
+        ...node.stack.map((s) => {
+          const li = document.createElement("li");
+          li.className = panel.dataset.chip ?? "";
+          li.textContent = s;
+          return li;
+        }),
+      );
+      field<HTMLAnchorElement>(panel, "link").href = `/work/${node.slug}`;
+      field(panel, "link-title").textContent = `: ${node.title}`;
+
+      panel.hidden = false;
+      for (const b of buttons) b.setAttribute("aria-expanded", String(b.dataset.slug === slug));
+      map?.select(slug, insetRight());
+      if (focusPanel) field(panel, "title").focus();
+    }
+
+    function hide() {
+      if (!open) return;
+      const returnTo = panel.contains(document.activeElement)
+        ? buttons.find((b) => b.dataset.slug === open)
+        : undefined;
+      open = null;
+      panel.hidden = true;
+      for (const b of buttons) b.setAttribute("aria-expanded", "false");
+      map?.select(null);
+      returnTo?.focus();
+    }
+
+    for (const b of buttons) {
+      const slug = b.dataset.slug ?? "";
+      b.addEventListener("click", () => (open === slug ? hide() : show(slug, true)));
+      b.addEventListener("focus", () => map?.highlight(slug));
+      b.addEventListener("blur", () => map?.highlight(null));
+      b.addEventListener("pointerenter", () => map?.highlight(slug));
+      b.addEventListener("pointerleave", () => map?.highlight(null));
+    }
+    $(panel, "[data-map-close]").addEventListener("click", hide);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && open) hide();
+    });
+
+    const placed = data.nodes.filter(
+      (n): n is NodeData & MapNode => n.x !== null && n.z !== null,
+    );
+    if (placed.length === 0) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return;
+        io.disconnect();
+        void load(placed);
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(stage);
+
+    async function load(nodes: MapNode[]) {
+      try {
+        const { mountMap } = await import("../lib/map/scene");
+        map = mountMap({
+          host: stage,
+          label,
+          nodes,
+          roads: data.roads,
+          onLabel(slug) {
+            const node = slug ? bySlug.get(slug) : undefined;
+            if (!node) return;
+            field(label, "title").textContent = node.title;
+            field(label, "summary").textContent = node.summary;
+          },
+          onPick(slug) {
+            if (slug) show(slug, false);
+            else hide();
+          },
+          onReady() {
+            setTimeout(() => (poster.hidden = true), 450);
+          },
+        });
+        // The panel can open from the list before the scene loads.
+        if (open) map.select(open, insetRight());
+      } catch (err) {
+        console.warn("[map] 3D map unavailable. Keeping the static map.", err);
+      }
+    }
+  }
+</script>

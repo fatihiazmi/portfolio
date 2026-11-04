@@ -7,5 +7,9 @@ export default defineConfig({
   site: "https://fatihiazmi.dev",
   trailingSlash: "never",
   build: { format: "file" },
-  vite: { plugins: [tailwindcss()] },
+  vite: {
+    plugins: [tailwindcss()],
+    // three.js is one lazy chunk of about 530 KB raw, 135 KB gzipped. Spec 4.4 budgets 300 KB gzipped.
+    build: { chunkSizeWarningLimit: 600 },
+  },
 });

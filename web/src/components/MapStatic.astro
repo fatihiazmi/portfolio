@@ -1,0 +1,87 @@
+---
+/**
+ * Static top-down view of the systems map. Spec section 4.
+ *
+ * First paint of `SystemsMap.astro`. The 3D scene replaces it once its first frame is drawn.
+ * Same data as the scene: nodes at (`map_x`, `map_z`), roads from `edges`.
+ * Projects without a position are left out.
+ * Decorative: the node list under the map carries the same projects as text.
+ */
+import type { Edge, Project } from "../lib/projects";
+
+interface Props {
+  projects: Project[];
+  edges: Edge[];
+}
+
+const { projects, edges } = Astro.props;
+
+const W = 800;
+const H = 500;
+const PAD = 80;
+
+const placed = projects.filter(
+  (p): p is Project & { map_x: number; map_z: number } => p.map_x !== null && p.map_z !== null,
+);
+
+// Fit the nodes into the frame and keep the aspect ratio of the map units.
+const xs = placed.map((p) => p.map_x);
+const zs = placed.map((p) => p.map_z);
+const minX = Math.min(...xs);
+const minZ = Math.min(...zs);
+const spanX = Math.max(...xs) - minX || 1;
+const spanZ = Math.max(...zs) - minZ || 1;
+const scale = Math.min((W - 2 * PAD) / spanX, (H - 2 * PAD) / spanZ);
+const offX = (W - spanX * scale) / 2;
+const offZ = (H - spanZ * scale) / 2;
+
+const nodes = new Map(
+  placed.map((p) => [
+    p.slug,
+    { ...p, cx: offX + (p.map_x - minX) * scale, cy: offZ + (p.map_z - minZ) * scale },
+  ]),
+);
+const roads = edges.flatMap((e) => {
+  const a = nodes.get(e.source);
+  const b = nodes.get(e.target);
+  return a && b ? [{ a, b }] : [];
+});
+---
+
+<svg
+  viewBox={`0 0 ${W} ${H}`}
+  class="block size-full"
+  role="presentation"
+  aria-hidden="true"
+  focusable="false"
+>
+  <g class="stroke-line-strong" stroke-width="2" stroke-dasharray="6 6">
+    {roads.map(({ a, b }) => <line x1={a.cx} y1={a.cy} x2={b.cx} y2={b.cy} />)}
+  </g>
+  {
+    [...nodes.values()].map((n) => {
+      const client = n.kind === "client";
+      return (
+        <g>
+          <circle cx={n.cx} cy={n.cy} r={client ? 22 : 14} class="fill-cyan/10" />
+          <circle
+            cx={n.cx}
+            cy={n.cy}
+            r={client ? 9 : 5}
+            class={client ? "fill-cyan" : "fill-ink-900 stroke-cyan"}
+            stroke-width="2"
+          />
+          <text
+            x={n.cx}
+            y={n.cy + (client ? 42 : 32)}
+            text-anchor="middle"
+            class={`font-mono ${client ? "fill-paper" : "fill-muted"}`}
+            font-size={client ? 20 : 17}
+          >
+            {n.title}
+          </text>
+        </g>
+      );
+    })
+  }
+</svg>
