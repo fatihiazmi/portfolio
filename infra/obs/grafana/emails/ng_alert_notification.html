@@ -5,7 +5,7 @@
   .Alerts.Firing, .Alerts.Resolved, and per alert .Labels, .Annotations, .StartsAt,
   .DashboardURL, .GeneratorURL, .SilenceURL. A Grafana upgrade can change them:
   send a test email after every upgrade. Colours: blueprint tokens in web/src/styles/global.css.
-  The subject comes from the contact point: template "portfolio.email.subject".
+  The subject comes from the `subject` setting in provisioning/alerting/contact-points.yml.
   Email clients ignore <style> blocks, so every style is inline.
 -->
 <html lang="en">

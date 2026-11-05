@@ -19,7 +19,9 @@ contactPoints:
         settings:
           addresses: $ALERT_EMAIL
           singleEmail: true
-          subject: '{{ template "portfolio.email.subject" . }}'
+          # Inline, not a named template: the contact point test API leaves named templates
+          # empty, and Resend rejects an empty subject with 550.
+          subject: '{{ if .Alerts.Firing }}🔴 {{ .CommonLabels.alertname }}{{ else }}✅ {{ .CommonLabels.alertname }} resolved{{ end }} · fatihiazmi.dev'
 
   # Informational alerts (`NewLead`): Telegram only, and no "resolved" message.
   - orgId: 1
@@ -43,8 +45,4 @@ templates:
       {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} <b>{{ .Labels.alertname }}</b> {{ .Status }}
       {{ .Annotations.summary }}{{ with .Annotations.value }} ({{ . }}){{ end }}
       {{ end -}}
-      {{- end }}
-
-      {{ define "portfolio.email.subject" -}}
-      {{ if .Alerts.Firing }}🔴 {{ .CommonLabels.alertname }}{{ else }}✅ {{ .CommonLabels.alertname }} resolved{{ end }} · fatihiazmi.dev
       {{- end }}
