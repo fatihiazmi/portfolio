@@ -102,7 +102,7 @@ Failure rule: the build falls back to the snapshot committed in the repo when th
 
 - Every node also exists as an HTML list under the canvas. Screen readers and search engines read the list.
 - `prefers-reduced-motion`: render one static frame. No drift, no pulses, no camera flights.
-- No WebGL: render a static SVG of the same map.
+- No WebGL, or WebGL drawn in software (SwiftShader, llvmpipe): render a static SVG of the same map.
 - Mobile: device pixel ratio capped at 1.5. Post-processing off.
 
 ### 4.4 Performance budget
@@ -371,9 +371,9 @@ portfolio/
 - [ ] The Homelab Platform node and case study are published. The `infra/` code is public with no secrets.
 - [ ] Grafana dashboards and alert rules load from git on a fresh `obs` container.
 - [ ] Stopping the `app` LXC fires `SiteDown` to Telegram within 5 minutes.
-- [ ] `grafana.<domain>` returns 403 without Cloudflare Access login.
+- [ ] `grafana.<domain>` without Cloudflare Access login redirects to the Access login. The origin never serves Grafana to it.
 - [ ] A test lead submitted from a phone arrives in SQLite and by email.
-- [ ] `/admin` returns 403 without Cloudflare Access login.
+- [ ] `/admin` without Cloudflare Access login redirects to the Access login. The origin returns 403 to a request without a valid JWT.
 - [ ] Stopping the LXC leaves the static site up, and the form switches to `mailto:`.
 - [ ] A Litestream restore into a fresh directory produces a working database.
 - [ ] `/stack` shows live metrics, and it shows the offline state when the LXC is stopped.
