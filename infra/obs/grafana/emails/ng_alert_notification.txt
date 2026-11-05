@@ -1,0 +1,31 @@
+{{- /* Plain-text part of the alert email. Pairs with ng_alert_notification.html. Plan T21.
+Grafana renders this file with HTML escaping, so `&` becomes `&amp;`. Every value passes
+through __dangerouslyInjectHTML to print as is. Safe here: this part is plain text. */ -}}
+FATIHIAZMI.DEV · ALERTS
+{{ range .Alerts.Firing }}{{ template "portfolio_alert_text" . }}{{ end -}}
+{{ range .Alerts.Resolved }}{{ template "portfolio_alert_text" . }}{{ end -}}
+{{ if .Message }}
+{{ .Message }}
+{{ end }}
+--
+Sent by Grafana on the obs LXC. Rules live in infra/obs/grafana.
+Every link needs a Cloudflare Access login.
+
+{{- define "portfolio_alert_text" }}
+
+{{ if eq .Status "firing" }}FIRING{{ else }}RESOLVED{{ end }}: {{ __dangerouslyInjectHTML .Labels.alertname }}
+{{ with .Annotations.summary }}{{ __dangerouslyInjectHTML . }}
+{{ end -}}
+{{ if eq .Status "firing" -}}
+Since {{ dateInZone "15:04, 2 Jan" .StartsAt "Asia/Kuala_Lumpur" }} MYT ({{ ago .StartsAt }} ago)
+{{- with .Annotations.value }}, {{ __dangerouslyInjectHTML . }}{{ end }}
+{{- else -}}
+Started {{ dateInZone "15:04" .StartsAt "Asia/Kuala_Lumpur" }}, resolved {{ dateInZone "15:04, 2 Jan" .EndsAt "Asia/Kuala_Lumpur" }} MYT
+{{- end }}
+{{ with .DashboardURL }}Dashboard: {{ __dangerouslyInjectHTML . }}
+{{ end -}}
+{{ with .GeneratorURL }}Rule: {{ __dangerouslyInjectHTML . }}
+{{ end -}}
+{{ if and (eq .Status "firing") .SilenceURL }}Silence: {{ __dangerouslyInjectHTML .SilenceURL }}
+{{ end -}}
+{{- end }}

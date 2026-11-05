@@ -1,0 +1,93 @@
+<!doctype html>
+<!--
+  Alert email for fatihiazmi.dev. Replaces Grafana's own ng_alert_notification.html. Plan T21.
+  Compose mounts this file over /usr/share/grafana/public/emails/. Grafana 13.2.4 data:
+  .Alerts.Firing, .Alerts.Resolved, and per alert .Labels, .Annotations, .StartsAt,
+  .DashboardURL, .GeneratorURL, .SilenceURL. A Grafana upgrade can change them:
+  send a test email after every upgrade. Colours: blueprint tokens in web/src/styles/global.css.
+  The subject comes from the contact point: template "portfolio.email.subject".
+  Email clients ignore <style> blocks, so every style is inline.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>{{ Subject .Subject .TemplateData "{{ .Title }}" }}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#06121f;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#06121f" style="background-color:#06121f;">
+<tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#0a1c30" style="max-width:560px; background-color:#0a1c30; border:1px solid #1c4270;">
+
+<tr><td style="padding:14px 24px; border-bottom:1px solid #1c4270; font-family:'JetBrains Mono',Menlo,Consolas,monospace; font-size:12px; letter-spacing:2px; color:#8aa4c2;">
+FATIHIAZMI.DEV&nbsp;&nbsp;·&nbsp;&nbsp;ALERTS
+</td></tr>
+
+{{ range .Alerts.Firing }}{{ template "portfolio_alert" . }}{{ end }}
+{{ range .Alerts.Resolved }}{{ template "portfolio_alert" . }}{{ end }}
+
+{{ if .Message }}
+<tr><td style="padding:0 24px 20px 24px; font-family:Inter,Helvetica,Arial,sans-serif; font-size:14px; line-height:1.5; color:#e6eef7;">
+{{ range $line := (splitList "\n" .Message) }}{{ $line }}<br>{{ end }}
+</td></tr>
+{{ end }}
+
+<tr><td style="padding:14px 24px; border-top:1px solid #1c4270; font-family:Inter,Helvetica,Arial,sans-serif; font-size:12px; line-height:1.5; color:#8aa4c2;">
+Sent by Grafana on the <code style="font-family:'JetBrains Mono',Menlo,Consolas,monospace; color:#e6eef7;">obs</code> LXC. Rules live in <code style="font-family:'JetBrains Mono',Menlo,Consolas,monospace; color:#e6eef7;">infra/obs/grafana</code>. Every link needs a Cloudflare Access login.
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+
+{{ define "portfolio_alert" }}
+{{ $firing := eq .Status "firing" }}
+<tr><td style="padding:24px 24px 4px 24px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td bgcolor="{{ if $firing }}#ffb547{{ else }}#5cc8ff{{ end }}" style="padding:3px 10px; background-color:{{ if $firing }}#ffb547{{ else }}#5cc8ff{{ end }}; font-family:'JetBrains Mono',Menlo,Consolas,monospace; font-size:11px; font-weight:700; letter-spacing:1px; color:#06121f;">
+      {{ if $firing }}● FIRING{{ else }}✓ RESOLVED{{ end }}
+    </td>
+  </tr></table>
+</td></tr>
+<tr><td style="padding:12px 24px 0 24px; font-family:Inter,Helvetica,Arial,sans-serif; font-size:22px; font-weight:700; line-height:1.3; color:#e6eef7;">
+  {{ .Labels.alertname }}
+</td></tr>
+{{ if .Annotations.summary }}
+<tr><td style="padding:8px 24px 0 24px; font-family:Inter,Helvetica,Arial,sans-serif; font-size:15px; line-height:1.5; color:#e6eef7;">
+  {{ .Annotations.summary }}
+</td></tr>
+{{ end }}
+<tr><td style="padding:10px 24px 0 24px; font-family:'JetBrains Mono',Menlo,Consolas,monospace; font-size:12px; line-height:1.6; color:#8aa4c2;">
+  {{ if $firing -}}
+  Since {{ dateInZone "15:04, 2 Jan" .StartsAt "Asia/Kuala_Lumpur" }} MYT ({{ ago .StartsAt }} ago)
+  {{- with .Annotations.value }}&nbsp;·&nbsp; {{ . }}{{ end }}
+  {{- else -}}
+  Started {{ dateInZone "15:04" .StartsAt "Asia/Kuala_Lumpur" }}&nbsp;·&nbsp;resolved {{ dateInZone "15:04, 2 Jan" .EndsAt "Asia/Kuala_Lumpur" }} MYT
+  {{- end }}
+</td></tr>
+<tr><td style="padding:18px 24px 24px 24px; border-bottom:1px solid #1c4270;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    {{ if .DashboardURL }}
+    <td bgcolor="#5cc8ff" style="background-color:#5cc8ff;">
+      <a href="{{ .DashboardURL }}" style="display:inline-block; padding:9px 14px; white-space:nowrap; font-family:Inter,Helvetica,Arial,sans-serif; font-size:13px; font-weight:600; color:#06121f; text-decoration:none;">Dashboard</a>
+    </td>
+    <td width="10"></td>
+    {{ end }}
+    {{ if .GeneratorURL }}
+    <td style="border:1px solid #3b7bc0;">
+      <a href="{{ .GeneratorURL }}" style="display:inline-block; padding:8px 14px; white-space:nowrap; font-family:Inter,Helvetica,Arial,sans-serif; font-size:13px; font-weight:600; color:#e6eef7; text-decoration:none;">Rule</a>
+    </td>
+    <td width="10"></td>
+    {{ end }}
+    {{ if and $firing .SilenceURL }}
+    <td style="border:1px solid #3b7bc0;">
+      <a href="{{ .SilenceURL }}" style="display:inline-block; padding:8px 14px; white-space:nowrap; font-family:Inter,Helvetica,Arial,sans-serif; font-size:13px; font-weight:600; color:#e6eef7; text-decoration:none;">Silence</a>
+    </td>
+    {{ end }}
+  </tr></table>
+</td></tr>
+{{ end }}

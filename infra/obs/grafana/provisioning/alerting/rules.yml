@@ -1,6 +1,8 @@
 # Alert rules. Spec 7a.4, plan T21.
 # Each rule: query A on Prometheus (instant), then threshold B. B is the condition.
 # Severity `page` goes to Telegram and email. `info` goes to Telegram only.
+# Annotation `value` is the readable value for the email and Telegram templates.
+# Provisioning does not expand env vars in annotations, so `$values` stays as written.
 apiVersion: 1
 
 groups:
@@ -64,6 +66,7 @@ groups:
         labels: { severity: page }
         annotations:
           summary: The contact form had a server-side error in the last 10 minutes. Check the API log.
+          value: '{{ printf "%.0f" $values.A.Value }} errors'
         dashboardUid: site-overview
 
       # Backup lag: how long the newest database change has waited without an upload to R2.
@@ -94,6 +97,7 @@ groups:
         labels: { severity: page }
         annotations:
           summary: A database change has waited over 15 minutes for its backup to R2, or Litestream is down.
+          value: '{{ if $values.A }}{{ humanizeDuration $values.A.Value }} lag{{ else }}no data{{ end }}'
         dashboardUid: backups
 
       # Host root disk and every Proxmox storage.
@@ -124,6 +128,7 @@ groups:
         labels: { severity: page }
         annotations:
           summary: A Proxmox host disk or storage is above 85% full.
+          value: '{{ humanizePercentage $values.A.Value }} full'
         dashboardUid: homelab
 
       # Informational. A counter reset after an API restart is not a lead.
@@ -153,4 +158,5 @@ groups:
         labels: { severity: info }
         annotations:
           summary: A new lead arrived. Open the admin Leads screen.
+          value: '{{ printf "%.0f" $values.A.Value }} new'
         dashboardUid: site-overview

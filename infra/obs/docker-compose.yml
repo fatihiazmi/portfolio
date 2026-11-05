@@ -101,6 +101,8 @@ services:
       GF_SMTP_PASSWORD: ${RESEND_API_KEY:?set RESEND_API_KEY in infra/obs/.env}
       GF_SMTP_FROM_ADDRESS: alerts@fatihiazmi.dev
       GF_SMTP_FROM_NAME: fatihiazmi.dev alerts
+      # Send the plain-text part too (grafana/emails/*.txt). Grafana sends HTML only by default.
+      GF_EMAILS_CONTENT_TYPES: text/html, text/plain
       # Read by grafana/provisioning/alerting/contact-points.yml.
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in infra/obs/.env}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in infra/obs/.env}
@@ -108,6 +110,9 @@ services:
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      # Own alert email layout over Grafana's. Check it with a test email after every upgrade.
+      - ./grafana/emails/ng_alert_notification.html:/usr/share/grafana/public/emails/ng_alert_notification.html:ro
+      - ./grafana/emails/ng_alert_notification.txt:/usr/share/grafana/public/emails/ng_alert_notification.txt:ro
       - grafana-data:/var/lib/grafana
     ports:
       - "127.0.0.1:3000:3000"

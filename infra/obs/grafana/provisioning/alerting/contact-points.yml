@@ -19,6 +19,7 @@ contactPoints:
         settings:
           addresses: $ALERT_EMAIL
           singleEmail: true
+          subject: '{{ template "portfolio.email.subject" . }}'
 
   # Informational alerts (`NewLead`): Telegram only, and no "resolved" message.
   - orgId: 1
@@ -40,6 +41,10 @@ templates:
       {{ define "portfolio.telegram" -}}
       {{ range .Alerts -}}
       {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} <b>{{ .Labels.alertname }}</b> {{ .Status }}
-      {{ .Annotations.summary }}
+      {{ .Annotations.summary }}{{ with .Annotations.value }} ({{ . }}){{ end }}
       {{ end -}}
+      {{- end }}
+
+      {{ define "portfolio.email.subject" -}}
+      {{ if .Alerts.Firing }}🔴 {{ .CommonLabels.alertname }}{{ else }}✅ {{ .CommonLabels.alertname }} resolved{{ end }} · fatihiazmi.dev
       {{- end }}
