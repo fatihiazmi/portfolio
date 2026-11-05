@@ -107,6 +107,7 @@ For a point in time, add `-timestamp 2026-11-05T10:00:00Z` before `/data/portfol
 | Date | Result |
 |---|---|
 | 2026-11-03 | Passed. Integrity `ok`. A lead written 5 s before the restore was present in the restored copy. |
+| 2026-11-05 | Passed in 6.8 s. Integrity `ok`. Row counts match on all 8 tables: 7 projects, 16 images, 3 leads. |
 
 ## Metrics on the `app` LXC
 
