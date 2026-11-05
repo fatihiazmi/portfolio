@@ -298,9 +298,16 @@ const built = new Date(BUILD_AT).toLocaleDateString("en-GB", {
     }
 
     function renderTiles(d: Stack): void {
-      const up = d.api_probe_up;
-      setText('[data-v="api"]', up == null ? "—" : up ? "Up" : "Down", up === false ? "amber" : "cyan");
-      setText('[data-s="api"]', "Checked from the internet every 60 s.");
+      // This data came from the API, so it is up for this browser. The `metrics` and `offline`
+      // branches in `load` set the tile again. A failed internet probe shows in the note only:
+      // it fails for about a minute on every deploy.
+      setText('[data-v="api"]', "Up", "cyan");
+      setText(
+        '[data-s="api"]',
+        d.api_probe_up === false
+          ? "Up for you. The last internet check failed."
+          : "It answered your browser just now.",
+      );
 
       const a = d.availability;
       setText('[data-v="availability"]', a.ratio == null ? "—" : `${(a.ratio * 100).toFixed(2)}%`);
