@@ -50,6 +50,7 @@ cd ../web && API_URL=http://127.0.0.1:8000 pnpm dev   # open /work/template-demo
 |---|---|---|
 | `/work/[slug]` | `src/pages/work/[slug].astro` | Spec section 5. A section with no data is left out. Markdown goes through `src/lib/markdown.ts`: raw HTML dropped, unsafe links and images reduced to text. |
 | `/resume` | `src/pages/resume.astro` | Contact, stack, and work from project data. Set `RESUME_PDF` in `src/lib/site.ts` to show the PDF link. |
+| `/stack` | `src/pages/stack.astro` | Spec section 7. Fetches `${API_URL}/api/stack` every 30 s while the tab is visible. States: live, metrics offline (API 503), homelab offline (no answer). The last good answer stays in `localStorage` and shows dimmed during an outage. Version: `CF_PAGES_COMMIT_SHA`, `dev` on local builds. |
 | `/404` | `src/pages/404.astro` | Pages serves `404.html` for any unknown path. |
 
 Refresh the fallback from the live API. Plan T26 runs this before launch:

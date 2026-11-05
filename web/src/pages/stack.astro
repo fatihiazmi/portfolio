@@ -1,0 +1,519 @@
+---
+/**
+ * `/stack`: the live system behind this site. Spec section 7, plan T22.
+ *
+ * The page fetches `${API_URL}/api/stack` in the browser every 30 s, and only while the tab is
+ * visible. The build renders placeholders: the numbers need JavaScript.
+ *
+ * States, set on `#stack-root` as `data-state`:
+ * - `loading`: before the first answer.
+ * - `live`: the API answered 200.
+ * - `metrics`: the API answered 503. The API is up, Prometheus is not.
+ * - `offline`: network error, timeout, or any other answer. Spec 2.2: "Homelab offline since
+ *   <last seen>". The page shows "last seen": the time this browser last got an answer.
+ *
+ * In `metrics` and `offline`, the page shows the last good answer from `localStorage`, dimmed.
+ * A first visit during an outage shows dashes and no time. The API tile is never dimmed: it
+ * shows what this browser sees now.
+ */
+import StackDiagram from "../components/StackDiagram.astro";
+import Base from "../layouts/Base.astro";
+import { BUILD_AT, BUILD_SHA } from "../lib/build";
+import { getProjects } from "../lib/projects";
+import { API_URL } from "../lib/site";
+
+// Plan T23 publishes the Homelab Platform case study under this slug. No link until then.
+const HOMELAB_SLUG = "homelab-platform";
+const { projects } = await getProjects();
+const homelab = projects.find((p) => p.slug === HOMELAB_SLUG);
+
+const tiles = [
+  { key: "api", label: "API" },
+  { key: "availability", label: "Availability" },
+  { key: "tunnel", label: "Tunnel" },
+  { key: "backup", label: "Backup" },
+  { key: "leads", label: "Leads received" },
+];
+
+const charts = [
+  {
+    metric: "requests_per_hour",
+    span: "lg:col-span-3",
+    title: "Requests per hour",
+    note: "API requests from visitors and the site build. Health checks left out.",
+  },
+  {
+    metric: "latency_p95_ms",
+    span: "lg:col-span-3",
+    title: "API latency, p95",
+    note: "95% of requests finish faster. Includes the health checks, 3 per minute.",
+  },
+  { metric: "cpu", span: "lg:col-span-2", title: "Host CPU", note: "Proxmox host, all cores." },
+  {
+    metric: "memory",
+    span: "lg:col-span-2",
+    title: "Host memory",
+    note: "Proxmox host, every LXC included.",
+  },
+  { metric: "disk", span: "lg:col-span-2", title: "Host disk", note: "Proxmox host root disk." },
+];
+
+const heading = "font-mono text-sm tracking-[0.2em] text-muted uppercase";
+const built = new Date(BUILD_AT).toLocaleDateString("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Asia/Kuala_Lumpur",
+});
+---
+
+<Base
+  title="Stack"
+  description="The live system behind this site: a Proxmox homelab, Cloudflare Tunnel, FastAPI, SQLite with Litestream, and Prometheus."
+>
+  <div id="stack-root" data-api={API_URL} data-state="loading">
+    <header class="max-w-3xl">
+      <h1 class="text-4xl font-semibold">Stack</h1>
+      <p class="mt-4 text-lg text-muted">
+        This site's API runs on a Proxmox server in my home. The numbers below come live from
+        Prometheus every 30 seconds.
+      </p>
+      <p
+        id="stack-status"
+        class="mt-6 inline-flex items-center gap-2 border border-line bg-ink-950/70 px-3 py-2 font-mono text-sm"
+      >
+        <span data-dot aria-hidden="true" class="text-muted">●</span>
+        <span data-text>Connecting to the homelab…</span>
+      </p>
+      <p class="sr-only" role="status" data-announce></p>
+      <noscript>
+        <p class="mt-4 text-muted">The live numbers need JavaScript.</p>
+      </noscript>
+    </header>
+
+    <section aria-labelledby="now-heading" class="pt-12">
+      <h2 id="now-heading" class={heading}>Now</h2>
+      <dl class="mt-6 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-3 lg:grid-cols-6">
+        {
+          tiles.map((t) => (
+            <div class="flex flex-col bg-ink-900 p-4 sm:p-5" data-live={t.key !== "api" ? "" : undefined}>
+              <dt class="font-mono text-xs tracking-wide text-muted uppercase">{t.label}</dt>
+              <dd class="mt-2 text-2xl font-semibold" data-v={t.key}>
+                —
+              </dd>
+              <dd class="mt-1 text-sm text-muted" data-s={t.key} />
+            </div>
+          ))
+        }
+        <div class="flex flex-col bg-ink-900 p-4 sm:p-5">
+          <dt class="font-mono text-xs tracking-wide text-muted uppercase">Version</dt>
+          <dd class="mt-2 font-mono text-2xl font-semibold">{BUILD_SHA}</dd>
+          <dd class="mt-1 text-sm text-muted">Built {built}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section aria-labelledby="day-heading" class="pt-12">
+      <h2 id="day-heading" class={heading}>Last 24 hours</h2>
+      <div class="mt-6 grid gap-px border border-line bg-line lg:grid-cols-6">
+        {
+          charts.map((c) => (
+            <figure class:list={["min-w-0 bg-ink-900 p-4 sm:p-5", c.span]} data-live>
+              <figcaption class="flex flex-wrap items-baseline justify-between gap-x-4">
+                <span class="font-semibold">{c.title}</span>
+                <span class="font-mono text-sm text-muted">
+                  Now <span class="text-paper" data-now={c.metric}>—</span>
+                </span>
+              </figcaption>
+              <div class="relative mt-3 h-36" data-chart={c.metric}>
+                <div
+                  role="tooltip"
+                  class="pointer-events-none absolute top-0 z-10 hidden border border-line-strong bg-ink-950 px-2 py-1 font-mono text-xs whitespace-nowrap"
+                  data-tip
+                />
+              </div>
+              <p class="mt-2 text-xs text-muted">{c.note}</p>
+            </figure>
+          ))
+        }
+      </div>
+      <details class="mt-4 text-sm">
+        <summary class="cursor-pointer font-mono text-muted hover:text-paper">
+          Show the 24 hours as a table
+        </summary>
+        <div class="mt-3 overflow-x-auto">
+          <table class="w-full font-mono text-xs" data-table>
+            <thead class="text-left text-muted">
+              <tr>
+                <th scope="col" class="py-1 pr-4 font-normal">Time</th>
+                {
+                  charts.map((c) => (
+                    <th scope="col" class="py-1 pr-4 font-normal">
+                      {c.title}
+                    </th>
+                  ))
+                }
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section aria-labelledby="arch-heading" class="pt-12">
+      <h2 id="arch-heading" class={heading}>How this site runs</h2>
+      <div class="mt-6 grid items-start gap-10 lg:grid-cols-[440px_1fr]">
+        <StackDiagram />
+        <ul class="grid max-w-xl gap-5 text-muted">
+          <li>
+            <strong class="text-paper">Pages.</strong> Cloudflare Pages serves every static page. They
+            stay up when the homelab is down.
+          </li>
+          <li>
+            <strong class="text-paper">API.</strong> FastAPI runs in a Docker container in an LXC. A Cloudflare
+            Tunnel connects it to the internet, so my home network has no open ports.
+          </li>
+          <li>
+            <strong class="text-paper">Data.</strong> SQLite holds projects and leads. Litestream copies
+            every change to Cloudflare R2 within seconds.
+          </li>
+          <li>
+            <strong class="text-paper">Monitoring.</strong> Prometheus scrapes the API, the tunnel, the backup,
+            and the Proxmox host every 30 seconds. Grafana alerts me on Telegram and email. It sits
+            behind Cloudflare Access.
+          </li>
+          <li>
+            <strong class="text-paper">This page.</strong> The API asks Prometheus a fixed list of queries.
+            Visitors never send a query, and no host names or IPs leave the API.
+          </li>
+          {
+            homelab && (
+              <li>
+                <a class="text-cyan underline" href={`/work/${homelab.slug}`}>
+                  Read the Homelab Platform case study
+                </a>
+              </li>
+            )
+          }
+        </ul>
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  /* Offline and metrics-offline: the last good numbers stay, dimmed. */
+  #stack-root[data-state="offline"] [data-live] > *,
+  #stack-root[data-state="metrics"] [data-live] > * {
+    opacity: 0.5;
+  }
+</style>
+
+<script>
+  type Series = (number | null)[];
+  type Stack = {
+    generated_at: string;
+    api_probe_up: boolean | null;
+    availability: { ratio: number | null; window_days: number };
+    tunnel_connections: number | null;
+    backup: { lag_seconds: number | null; last_upload_at: string | null };
+    host: { cpu: number | null; memory: number | null; disk: number | null };
+    leads_total: number;
+    series: {
+      start: number;
+      step_seconds: number;
+      requests_per_hour: Series;
+      latency_p95_ms: Series;
+      cpu: Series;
+      memory: Series;
+      disk: Series;
+    };
+  };
+  type Saved = { data: Stack; seen: number };
+  type State = "live" | "metrics" | "offline";
+
+  const POLL_MS = 30_000;
+  const TIMEOUT_MS = 8_000;
+  const STORE_KEY = "stack:last";
+  // Backup lag above this is late. Matches the `BackupStale` alert: 15 min.
+  const BACKUP_LATE_S = 900;
+  const SVG = "http://www.w3.org/2000/svg";
+
+  const root = document.getElementById("stack-root");
+  if (root) setup(root);
+
+  function setup(root: HTMLElement): void {
+    const api = root.dataset.api ?? "";
+    const status = document.getElementById("stack-status")!;
+    let timer: number | undefined;
+    let shown: Stack | null = null;
+
+    const pct = (v: number) => `${(v * 100).toFixed(v < 0.1 ? 1 : 0)}%`;
+    const fmt: Record<string, (v: number) => string> = {
+      requests_per_hour: (v) => `${v.toFixed(v < 10 ? 1 : 0)}/h`,
+      latency_p95_ms: (v) => `${v.toFixed(v < 10 ? 1 : 0)} ms`,
+      cpu: pct,
+      memory: pct,
+      disk: pct,
+    };
+    // Fixed 0–100% axis for memory and disk. The rest scale to their data.
+    const fixedMax: Record<string, number> = { memory: 1, disk: 1 };
+
+    const clock = (t: number | string) =>
+      new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const day = (t: number | string) =>
+      new Date(t).toLocaleString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        day: "numeric",
+        month: "short",
+      });
+    const ago = (iso: string) => {
+      const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
+      if (s < 90) return "just now";
+      if (s < 5400) return `${Math.round(s / 60)} min ago`;
+      if (s < 129600) return `${Math.round(s / 3600)} h ago`;
+      return `${Math.round(s / 86400)} days ago`;
+    };
+    const duration = (s: number) =>
+      s < 120 ? `${Math.round(s)} s` : s < 7200 ? `${Math.round(s / 60)} min` : `${Math.round(s / 3600)} h`;
+
+    function setText(sel: string, text: string, tone: "paper" | "cyan" | "amber" = "paper"): void {
+      const el = root.querySelector<HTMLElement>(sel);
+      if (!el) return;
+      el.textContent = text;
+      el.classList.remove("text-paper", "text-cyan", "text-amber");
+      el.classList.add(`text-${tone}`);
+    }
+
+    // The visible line changes every poll. Screen readers hear state changes only.
+    const announce = root.querySelector<HTMLElement>("[data-announce]")!;
+    function setStatus(state: State | "loading", text: string): void {
+      if (root.dataset.state !== state) announce.textContent = text;
+      root.dataset.state = state;
+      const dot = status.querySelector<HTMLElement>("[data-dot]")!;
+      dot.className = state === "live" ? "text-cyan" : state === "loading" ? "text-muted" : "text-amber";
+      status.querySelector<HTMLElement>("[data-text]")!.textContent = text;
+    }
+
+    function renderTiles(d: Stack): void {
+      const up = d.api_probe_up;
+      setText('[data-v="api"]', up == null ? "—" : up ? "Up" : "Down", up === false ? "amber" : "cyan");
+      setText('[data-s="api"]', "Checked from the internet every 60 s.");
+
+      const a = d.availability;
+      setText('[data-v="availability"]', a.ratio == null ? "—" : `${(a.ratio * 100).toFixed(2)}%`);
+      setText('[data-s="availability"]', `Last ${a.window_days} days.`);
+
+      const t = d.tunnel_connections;
+      setText('[data-v="tunnel"]', t == null ? "—" : t > 0 ? "Connected" : "Down", t === 0 ? "amber" : "paper");
+      setText('[data-s="tunnel"]', t == null ? "" : `${t} links to Cloudflare.`);
+
+      const lag = d.backup.lag_seconds;
+      const last = d.backup.last_upload_at;
+      setText(
+        '[data-v="backup"]',
+        lag == null ? "—" : lag === 0 ? "In sync" : `${duration(lag)} behind`,
+        lag != null && lag > BACKUP_LATE_S ? "amber" : "paper",
+      );
+      setText(
+        '[data-s="backup"]',
+        last ? `Last upload ${ago(last)}.` : `No new data to upload in ${a.window_days} days.`,
+      );
+
+      setText('[data-v="leads"]', String(d.leads_total));
+      setText('[data-s="leads"]', "Through the contact form.");
+    }
+
+    function niceMax(m: number): number {
+      if (!(m > 0)) return 1;
+      const p = 10 ** Math.floor(Math.log10(m));
+      return [1, 2, 2.5, 5, 10].map((f) => f * p).find((x) => x >= m)!;
+    }
+
+    function el<K extends keyof SVGElementTagNameMap>(
+      name: K,
+      attrs: Record<string, string | number>,
+      parent: Element,
+    ): SVGElementTagNameMap[K] {
+      const node = document.createElementNS(SVG, name);
+      for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, String(v));
+      parent.append(node);
+      return node;
+    }
+
+    function renderChart(box: HTMLElement, key: string, values: Series, start: number, step: number): void {
+      box.querySelector("svg")?.remove();
+      const tip = box.querySelector<HTMLElement>("[data-tip]")!;
+      const f = fmt[key];
+      const W = box.clientWidth;
+      const H = box.clientHeight;
+      const L = 52;
+      const R = 8;
+      const T = 8;
+      const B = 22;
+      const real = values.filter((v): v is number => v != null);
+      const max = fixedMax[key] ?? niceMax(Math.max(0, ...real));
+      const x = (i: number) => L + (i / (values.length - 1)) * (W - L - R);
+      const y = (v: number) => T + (1 - v / max) * (H - T - B);
+
+      // viewBox in CSS pixels at render time. `w-full` lets it shrink until the resize re-render.
+      const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, "aria-hidden": "true" }, box);
+      svg.classList.add("block", "h-full", "w-full", "font-mono", "text-[11px]");
+
+      // Grid and y labels at 0, half, and max.
+      for (const v of [0, max / 2, max]) {
+        el("line", { x1: L, x2: W - R, y1: y(v), y2: y(v), class: "stroke-line", "stroke-width": 1 }, svg);
+        const label = el("text", { x: L - 6, y: y(v) + 4, "text-anchor": "end", class: "fill-muted" }, svg);
+        label.textContent = f(v);
+      }
+      // X labels on local whole hours, every 6 h.
+      values.forEach((_, i) => {
+        const d = new Date((start + i * step) * 1000);
+        if (d.getMinutes() !== 0 || d.getHours() % 6 !== 0) return;
+        const label = el("text", { x: x(i), y: H - 6, "text-anchor": "middle", class: "fill-muted" }, svg);
+        label.textContent = `${String(d.getHours()).padStart(2, "0")}:00`;
+      });
+
+      // The line breaks at gaps.
+      let path = "";
+      let pen = false;
+      values.forEach((v, i) => {
+        if (v == null) {
+          pen = false;
+          return;
+        }
+        path += `${pen ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`;
+        pen = true;
+      });
+      el("path", { d: path, fill: "none", "stroke-width": 2, "stroke-linejoin": "round", class: "stroke-cyan" }, svg);
+
+      // Hover: crosshair, a dot with a surface ring, and a tooltip.
+      const cross = el("line", { y1: T, y2: H - B, class: "stroke-line-strong", "stroke-width": 1, visibility: "hidden" }, svg);
+      const dot = el("circle", { r: 4, "stroke-width": 2, class: "fill-cyan stroke-ink-900", visibility: "hidden" }, svg);
+      const hide = () => {
+        cross.setAttribute("visibility", "hidden");
+        dot.setAttribute("visibility", "hidden");
+        tip.classList.add("hidden");
+      };
+      svg.addEventListener("pointerleave", hide);
+      svg.addEventListener("pointermove", (e) => {
+        const px = e.clientX - svg.getBoundingClientRect().left;
+        const i = Math.round(((px - L) / (W - L - R)) * (values.length - 1));
+        if (i < 0 || i >= values.length) return hide();
+        const v = values[i];
+        cross.setAttribute("x1", String(x(i)));
+        cross.setAttribute("x2", String(x(i)));
+        cross.setAttribute("visibility", "visible");
+        if (v == null) dot.setAttribute("visibility", "hidden");
+        else {
+          dot.setAttribute("cx", String(x(i)));
+          dot.setAttribute("cy", String(y(v)));
+          dot.setAttribute("visibility", "visible");
+        }
+        tip.textContent = `${clock((start + i * step) * 1000)}  ${v == null ? "no data" : f(v)}`;
+        tip.classList.remove("hidden");
+        const left = Math.min(Math.max(x(i) - tip.offsetWidth / 2, 0), W - tip.offsetWidth);
+        tip.style.left = `${left}px`;
+      });
+    }
+
+    function renderCharts(d: Stack): void {
+      const s = d.series;
+      for (const box of root.querySelectorAll<HTMLElement>("[data-chart]")) {
+        const key = box.dataset.chart as keyof Stack["series"];
+        const values = s[key] as Series;
+        renderChart(box, key, values, s.start, s.step_seconds);
+        const latest = [...values].reverse().find((v) => v != null);
+        setText(`[data-now="${key}"]`, latest == null ? "—" : fmt[key](latest));
+      }
+      // Hourly rows for the table view.
+      const body = root.querySelector<HTMLElement>("[data-table] tbody")!;
+      const keys = Object.keys(fmt) as (keyof typeof fmt)[];
+      const rows: string[] = [];
+      for (let i = 0; i < s.cpu.length; i += 3600 / s.step_seconds) {
+        const cells = keys.map((k) => {
+          const v = (s[k as keyof Stack["series"]] as Series)[i];
+          return `<td class="py-1 pr-4">${v == null ? "—" : fmt[k](v)}</td>`;
+        });
+        rows.push(`<tr class="border-t border-line"><td class="py-1 pr-4 text-muted">${clock((s.start + i * s.step_seconds) * 1000)}</td>${cells.join("")}</tr>`);
+      }
+      body.innerHTML = rows.join("");
+    }
+
+    function render(d: Stack): void {
+      shown = d;
+      renderTiles(d);
+      renderCharts(d);
+    }
+
+    function saved(): Saved | null {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        return raw ? (JSON.parse(raw) as Saved) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function save(data: Stack): void {
+      try {
+        localStorage.setItem(STORE_KEY, JSON.stringify({ data, seen: Date.now() } satisfies Saved));
+      } catch {
+        // Private mode or full storage: the page still works, without "last seen".
+      }
+    }
+
+    function showLast(): Saved | null {
+      const last = saved();
+      if (last && !shown) render(last.data);
+      return last;
+    }
+
+    async function load(): Promise<void> {
+      window.clearTimeout(timer);
+      const ctl = new AbortController();
+      const abort = window.setTimeout(() => ctl.abort(), TIMEOUT_MS);
+      try {
+        const r = await fetch(`${api}/api/stack`, { signal: ctl.signal, cache: "no-store" });
+        if (r.ok) {
+          const data = (await r.json()) as Stack;
+          render(data);
+          save(data);
+          setStatus("live", `Live · updated ${clock(data.generated_at)}`);
+        } else if (r.status === 503) {
+          const last = showLast();
+          setText('[data-v="api"]', "Up", "cyan");
+          setText('[data-s="api"]', "It answered your browser just now.");
+          setStatus(
+            "metrics",
+            `API up, metrics offline${last ? ` · last seen ${day(last.seen)}` : ""}`,
+          );
+        } else {
+          throw new Error(`HTTP ${r.status}`);
+        }
+      } catch {
+        const last = showLast();
+        setText('[data-v="api"]', "Offline", "amber");
+        setText('[data-s="api"]', "Your browser cannot reach it.");
+        setStatus("offline", last ? `Homelab offline · last seen ${day(last.seen)}` : "Homelab offline");
+      } finally {
+        window.clearTimeout(abort);
+        if (!document.hidden) timer = window.setTimeout(load, POLL_MS);
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) window.clearTimeout(timer);
+      else void load();
+    });
+    let resize: number | undefined;
+    new ResizeObserver(() => {
+      window.clearTimeout(resize);
+      resize = window.setTimeout(() => shown && renderCharts(shown), 100);
+    }).observe(root);
+
+    void load();
+  }
+</script>

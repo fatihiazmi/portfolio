@@ -1,0 +1,112 @@
+---
+/**
+ * Architecture of this site, spec section 2. Drawn for `/stack`.
+ * One narrow layout for every screen: it stays readable at 375 px, and sits beside text on desktop.
+ * Colours: blueprint tokens. Amber marks the Cloudflare Access gate.
+ */
+const box = "fill-ink-800 stroke-line-strong";
+const title = "fill-paper font-mono text-[12px]";
+const sub = "fill-muted font-mono text-[10px]";
+const wire = "stroke-line-strong";
+---
+
+<figure class="w-full max-w-[440px]">
+  <svg
+    viewBox="0 0 360 452"
+    role="img"
+    aria-labelledby="diagram-title diagram-desc"
+    class="h-auto w-full"
+  >
+    <title id="diagram-title">Architecture of fatihiazmi.dev</title>
+    <desc id="diagram-desc">
+      Visitors reach the Cloudflare edge. The edge serves static pages from Cloudflare Pages. A
+      Cloudflare Tunnel carries API requests to the app LXC on a Proxmox host at home: FastAPI,
+      SQLite, and Litestream, which replicates the database to Cloudflare R2. A second tunnel,
+      gated by Cloudflare Access, carries Grafana traffic to the obs LXC: Prometheus, Grafana,
+      and exporters. Prometheus scrapes the app LXC every 30 seconds.
+    </desc>
+    <defs>
+      <marker
+        id="arrow"
+        viewBox="0 0 8 8"
+        refX="7"
+        refY="4"
+        markerWidth="7"
+        markerHeight="7"
+        orient="auto-start-reverse"
+      >
+        <path d="M0 0 L8 4 L0 8 z" class="fill-line-strong"></path>
+      </marker>
+    </defs>
+
+    <g fill="none" stroke-width="1.5" class={wire} marker-end="url(#arrow)">
+      <path d="M180 38 V62"></path>
+      <path d="M64 104 V132"></path>
+      <path d="M180 104 V132"></path>
+      <path d="M296 104 V132"></path>
+      <path d="M180 178 V224"></path>
+      <path d="M296 178 V224"></path>
+      <path d="M180 330 V394"></path>
+    </g>
+    <!-- Scrape: obs pulls metrics from app. -->
+    <path
+      d="M296 330 V350 H212 V334"
+      fill="none"
+      stroke-width="1.5"
+      stroke-dasharray="4 3"
+      class="stroke-cyan"
+      marker-end="url(#arrow)"></path>
+    <text x="254" y="364" text-anchor="middle" class="fill-cyan font-mono text-[10px]">
+      scrape 30 s
+    </text>
+
+    <rect x="120" y="8" width="120" height="30" class={box}></rect>
+    <text x="180" y="27" text-anchor="middle" class={title}>Visitor</text>
+
+    <rect x="10" y="64" width="340" height="40" class={box}></rect>
+    <text x="180" y="81" text-anchor="middle" class={title}>Cloudflare edge</text>
+    <text x="180" y="97" text-anchor="middle" class={sub}>DNS · TLS · WAF · cache</text>
+
+    <rect x="10" y="134" width="108" height="44" class={box}></rect>
+    <text x="64" y="153" text-anchor="middle" class={title}>Pages</text>
+    <text x="64" y="169" text-anchor="middle" class={sub}>static site</text>
+
+    <rect x="126" y="134" width="108" height="44" class={box}></rect>
+    <text x="180" y="153" text-anchor="middle" class={title}>Tunnel</text>
+    <text x="180" y="169" text-anchor="middle" class={sub}>public API</text>
+
+    <rect x="242" y="134" width="108" height="44" class="fill-ink-800 stroke-amber"></rect>
+    <text x="296" y="153" text-anchor="middle" class={title}>Tunnel</text>
+    <text x="296" y="169" text-anchor="middle" class="fill-amber font-mono text-[10px]">
+      Access gate
+    </text>
+
+    <rect
+      x="118"
+      y="200"
+      width="240"
+      height="172"
+      fill="none"
+      stroke-dasharray="6 4"
+      class="stroke-line-strong"></rect>
+    <text x="112" y="212" text-anchor="end" class={sub}>Proxmox host</text>
+    <text x="112" y="226" text-anchor="end" class={sub}>at home</text>
+
+    <rect x="126" y="226" width="108" height="104" class={box}></rect>
+    <text x="180" y="246" text-anchor="middle" class={title}>LXC app</text>
+    <text x="180" y="270" text-anchor="middle" class={sub}>FastAPI</text>
+    <text x="180" y="288" text-anchor="middle" class={sub}>SQLite</text>
+    <text x="180" y="306" text-anchor="middle" class={sub}>Litestream</text>
+
+    <rect x="242" y="226" width="108" height="104" class={box}></rect>
+    <text x="296" y="246" text-anchor="middle" class={title}>LXC obs</text>
+    <text x="296" y="270" text-anchor="middle" class={sub}>Prometheus</text>
+    <text x="296" y="288" text-anchor="middle" class={sub}>Grafana</text>
+    <text x="296" y="306" text-anchor="middle" class={sub}>exporters</text>
+
+    <text x="172" y="388" text-anchor="end" class={sub}>replicate 1 s</text>
+    <rect x="126" y="396" width="108" height="44" class={box}></rect>
+    <text x="180" y="415" text-anchor="middle" class={title}>R2</text>
+    <text x="180" y="431" text-anchor="middle" class={sub}>backup</text>
+  </svg>
+</figure>
