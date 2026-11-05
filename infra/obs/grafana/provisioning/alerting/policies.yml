@@ -5,7 +5,8 @@ policies:
   - orgId: 1
     receiver: owner
     group_by: ["alertname"]
-    group_wait: 30s
+    # No wait. Each alert name is its own group, so a wait batches nothing. Plan T25 F3.
+    group_wait: 0s
     group_interval: 5m
     repeat_interval: 4h
     routes:

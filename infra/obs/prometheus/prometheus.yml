@@ -59,9 +59,10 @@ scrape_configs:
       - target_label: __address__
         replacement: pve-exporter:9221
 
-  # Public URLs probed through the internet, every 60 s. Spec 7a.1.
+  # Public URLs probed through the internet, every 30 s. Spec 7a.1.
+  # 30 s keeps `SiteDown` inside its 5 min budget (spec 12). Plan T25 F3.
   - job_name: blackbox
-    scrape_interval: 60s
+    scrape_interval: 30s
     metrics_path: /probe
     params:
       module: [http_2xx]

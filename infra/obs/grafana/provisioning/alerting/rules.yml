@@ -11,7 +11,9 @@ groups:
     folder: Portfolio
     interval: 1m
     rules:
-      # The blackbox probe of /api/health runs every 60 s. 3 min is 3 failed probes.
+      # The blackbox probe of /api/health runs every 30 s. 3 min is 6 failed probes.
+      # Worst case to Telegram: probe 30 s + evaluation 60 s + `for` 3 min = 4.5 min. Spec 12 allows 5.
+      # Keep `for` at 3 min: the 2026-11-05 power blip failed the probe for about 2 min.
       # No data means the probe series is gone, so that counts as down too.
       - uid: site-down
         title: SiteDown
