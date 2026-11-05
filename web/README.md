@@ -68,6 +68,7 @@ pnpm snapshot
 | First paint | Static SVG from `MapStatic.astro`. |
 | Map within 200 px of the viewport | `src/lib/map/scene.ts` and three.js load as one lazy chunk. The canvas fades in over the SVG. |
 | No WebGL | The SVG stays, and the 3D chunk never downloads. The console logs `[map] No WebGL`. |
+| WebGL drawn in software (SwiftShader, llvmpipe) | The SVG stays, and the 3D chunk never downloads. The console logs `[map] WebGL runs in software`. Plan T25 F1. |
 | The chunk or the scene fails | The SVG stays. The console logs `[map] 3D map unavailable`. |
 | `prefers-reduced-motion: reduce` | One still frame. No drift, pulses, parallax, or flights. Hover, focus, and selection redraw that one frame. |
 
