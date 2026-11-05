@@ -31,9 +31,37 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T21 | 12 | Grafana as code: data source, 3 dashboards, 5 alert rules, Telegram contact point. Cloudflare Tunnel and Access for `grafana.<domain>`. **Owner input:** Telegram bot token and chat ID. | T20 | A fresh `obs` container loads everything from git. `grafana.<domain>` returns 403 without login. | done |
 | T22 | 12 | `/api/stack` with the PromQL allowlist. `/stack` page with live panels, 24 h charts, offline state, and the site architecture diagram. | T8, T20 | `/stack` shows live data, and it shows the offline state when the `app` LXC stops. | done |
 | T23 | 13 | Homelab Platform: make `infra/` public with a full secrets scan. Write the case study with Grafana screenshots and one restore or outage drill. Publish as the 7th node. | T19, T21, T22 | Node and case study live. Secret scan on the public repo is clean. | done |
-| T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | todo |
+| T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | in progress |
 | T25 | 14–15 | Fix the failures found in T24. | T24 | Every T24 failure is resolved or moved to v2 with a written reason. | todo |
 | T26 | 15 | Launch: save a fresh `projects.snapshot.json` in the repo. Final publish. **Owner:** post the link on LinkedIn and send it to warm contacts. | T25 | Site live on the domain on 2026-11-18. | todo |
+
+### T24 results and T25 fix list
+
+Acceptance run on 2026-11-05 against spec section 12, deployed `b7e7995`.
+
+| Check | Result | Evidence |
+|---|---|---|
+| Site live on the domain | pass | `/`, `/stack`, `/resume` 200. `www` 301 to apex. Unknown path 404. |
+| Home page sections | pass | Hero, map, `#services`, `#how`, `#work`, `#contact` in the HTML. 3D canvas renders. |
+| 3 case studies, scrubbed screenshots, diagrams | pass | `sims` 5, `nadi` 6, `otms` 5 images. 0 unscrubbed in SQLite. All 27 image and diagram URLs 200. |
+| 3 personal repos with GitHub links | pass | `ledger-engine`, `seatly`, `shieldwallet` pages link their repos. Each repo URL 200. |
+| Homelab node, public `infra/`, no secrets | pass | `homelab-platform` page 200, 4 images. Secret scan from T23 clean. |
+| Grafana loads from git on a fresh container | pass | Throwaway Grafana 13.2.4 from `git archive HEAD`: 3 dashboards, 5 rules, 3 contact points, 1 template, 0 errors. |
+| `SiteDown` to Telegram within 5 min | pass, see F3 | `pct stop 202` 07:45:21Z. Pending 07:46:40Z. Firing 07:49:28Z. Sent after 30 s `group_wait`, about 4 min 37 s. Telegram receipt: owner to check. |
+| `grafana.<domain>` 403 without login | pass, see F2 | Edge returns 302 to the Access login. |
+| Test lead from a phone | owner | Owner submits one lead from a phone on mobile data. |
+| `/admin` 403 without login | pass, see F2 | Edge returns 302 to the Access login. Origin returns 403. |
+| LXC stopped: static site up, form `mailto:` | pass | `/` 200. Form logged `mailto mode: health probe failed`. Mail label and note shown. |
+| Litestream restore | pass | `restore-drill.sh` 07:40:21Z: integrity `ok`, 8 tables match. |
+| `/stack` live, and offline with LXC stopped | pass | `data-state` `live`, then `offline` with "Homelab offline". |
+| Lighthouse mobile 85+ on `/` | **fail, F1** | Performance 67 in 3 runs. Accessibility, best practices, SEO 100. |
+| Reduced-motion and no-WebGL fallbacks | pass | Reduced motion: 0 draw calls after the first frame. No WebGL: SVG map, no scene download, list opens the panel. |
+
+| ID | Failure | Cause | Fix |
+|---|---|---|---|
+| F1 | Lighthouse mobile performance 67 on `/`, target 85. | `scene.*.js` draws every frame. Lab Chrome renders WebGL in software, so each frame costs about 150 ms. Total Blocking Time 4–8.6 s. The SVG fallback alone scores 99. | Stop the render loop when nothing moves, or start the 3D scene on first interaction on mobile. Re-run Lighthouse 3 times. |
+| F2 | Spec says 403 for `/admin` and `grafana.<domain>` without login. The edge returns 302 to the Access login. | Cloudflare Access redirects browsers to its login page. The origin still returns 403. | Change the spec 12 wording to "redirects to the Access login, and the origin returns 403". |
+| F3 | `SiteDown` worst case is about 5.5 min, over the 5 min target. The measured run took 4 min 37 s. | Probe 60 s + rule evaluation 60 s + `for: 3m` + `group_wait` 30 s. | Set `group_wait: 0s` for `SiteDown` and cut `for` to `2m30s`. Repeat the stop test. |
 
 ### Tracking rules
 
