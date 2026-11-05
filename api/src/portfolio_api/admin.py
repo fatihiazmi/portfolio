@@ -59,7 +59,9 @@ class Summary(BaseModel):
     # Unscrubbed images on published projects. Above 0, publish returns 409.
     blocking_images: int
     last_publish: Publish | None
-    # Litestream reports snapshot age through its metrics. Plan T20 wires it in. Null until then.
+    # Time of the last Litestream upload to R2. Prometheus records it as
+    # `portfolio:litestream_last_upload_timestamp_seconds` (T20). The API reads it once it
+    # has a Prometheus client in T22. Null until then.
     last_backup_at: str | None
 
 

@@ -44,6 +44,8 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `R2_SECRET_ACCESS_KEY` | empty | Secret of the same token. |
 | `PAGES_DEPLOY_HOOK_URL` | empty | Pages deploy hook. Empty: publish returns 503. |
 | `ADMIN_UI_DIR` | `api/static/admin` | Admin SPA build. No `index.html` there: `/admin/` returns 503. |
+| `METRICS_PORT` | `0` | Port for Prometheus `/metrics`. `0`: off. Compose sets `9464`. |
+| `METRICS_HOST` | `0.0.0.0` | Address the metrics server binds inside the container. |
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md), [`docs/guide/t16-r2-images.md`](../docs/guide/t16-r2-images.md).
 
@@ -62,6 +64,17 @@ Rules:
 - Images appear only when `scrubbed = 1`, even on a published project.
 - `stack` is a JSON array. `diagram_url` and image `url` are built from `IMAGES_BASE_URL`.
 - Internal columns stay out: `id`, `published`, `sort_order`, `diagram_key`.
+
+## Metrics
+
+`GET /metrics` runs on `METRICS_PORT`, never on the API port. The tunnel routes the API port only. Compose publishes the metrics port on the LAN address in `METRICS_BIND`. Spec 7a.1, plan T20.
+
+| Metric | Type | Labels |
+|---|---|---|
+| `portfolio_http_requests_total` | counter | `method`, `route` (route template, `other` when no route matches), `status` |
+| `portfolio_http_request_duration_seconds` | histogram | `method`, `route`. Ends at the last response byte. Background tasks are excluded. |
+| `portfolio_leads_total` | counter | none. Count only, never lead content. |
+| `portfolio_contact_errors_total` | counter | `reason`: `not_configured`, `turnstile_unavailable`, `email_failed`. All start at 0. |
 
 ## Admin gate
 
@@ -87,7 +100,7 @@ All sit behind the admin gate. Writes need `X-Requested-With: admin`. Spec secti
 
 | Method | Path | Body | Returns |
 |---|---|---|---|
-| GET | `/api/admin/summary` | — | Lead and project counts, `blocking_images`, `last_publish`. `last_backup_at` is `null` until T20. |
+| GET | `/api/admin/summary` | — | Lead and project counts, `blocking_images`, `last_publish`. `last_backup_at` is `null` until T22. |
 | GET | `/api/admin/projects` | — | `{"projects": [...], "edges": [{"from_id", "to_id", "label"}]}`. Drafts and unscrubbed images included. |
 | POST | `/api/admin/projects` | Project fields. `slug`, `title`, `kind`, `summary` required. | 201 with the project. 409 on a used slug. |
 | GET | `/api/admin/projects/{id}` | — | One project with its images. |

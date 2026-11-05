@@ -45,6 +45,11 @@ class Settings(BaseSettings):
     # Admin SPA build, served at `/admin`. Plan T17. No `index.html` there: `/admin/` returns 503.
     admin_ui_dir: Path = API_ROOT / "static" / "admin"
 
+    # Prometheus `/metrics` on its own port, spec 7a.1. 0 turns it off.
+    # Never route this port through the tunnel. Compose publishes it on the LAN only.
+    metrics_port: int = 0
+    metrics_host: str = "0.0.0.0"  # noqa: S104 - inside the container. Compose limits the host side.
+
     @property
     def images_ready(self) -> bool:
         return bool(

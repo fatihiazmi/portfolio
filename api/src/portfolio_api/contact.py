@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from portfolio_api.config import Settings
 from portfolio_api.lead_email import Lead, render
+from portfolio_api.metrics import LEADS, contact_error
 
 log = logging.getLogger("portfolio_api.contact")
 
@@ -122,6 +123,7 @@ def _send_notification(http: httpx.Client, settings: Settings, lead: Lead) -> No
         )
     except httpx.HTTPError:
         log.exception("lead %s: notification email failed, Resend unreachable", lead_id)
+        contact_error("email_failed")
         return
     if res.is_error:
         # Resend's body names the cause, e.g. an unverified sender domain. It holds no secrets.
@@ -131,6 +133,7 @@ def _send_notification(http: httpx.Client, settings: Settings, lead: Lead) -> No
             res.status_code,
             res.text[:300],
         )
+        contact_error("email_failed")
         return
     log.info("lead %s: notification email sent", lead_id)
 
@@ -140,6 +143,7 @@ def create_lead(body: ContactIn, request: Request, background: BackgroundTasks) 
     settings: Settings = request.app.state.settings
     if not settings.contact_ready:
         log.error("contact: IP_HASH_SALT or TURNSTILE_SECRET is not set")
+        contact_error("not_configured")
         raise HTTPException(status_code=503, detail="contact form is not configured")
 
     if body.website:
@@ -159,6 +163,7 @@ def create_lead(body: ContactIn, request: Request, background: BackgroundTasks) 
         accepted = _turnstile_ok(http, settings.turnstile_secret, body.turnstile_token, ip)
     except httpx.HTTPError:
         log.exception("contact: turnstile check failed to run")
+        contact_error("turnstile_unavailable")
         raise HTTPException(status_code=502, detail="spam check unavailable") from None
     if not accepted:
         raise HTTPException(status_code=400, detail="spam check failed, reload and try again")
@@ -179,6 +184,7 @@ def create_lead(body: ContactIn, request: Request, background: BackgroundTasks) 
         ),
     )
     lead_id = int(cur.lastrowid or 0)
+    LEADS.inc()
     log.info("contact: lead %s stored, kind=%s", lead_id, body.kind)
 
     if settings.email_ready:

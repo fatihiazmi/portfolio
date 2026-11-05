@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from portfolio_api import admin, admin_projects, admin_ui, contact, projects
+from portfolio_api import admin, admin_projects, admin_ui, contact, metrics, projects
 from portfolio_api.admin_auth import AccessVerifier, admin_gate
 from portfolio_api.config import Settings, get_settings
 from portfolio_api.db import connect, migrate
@@ -45,9 +45,17 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
         app.state.db = conn
         app.state.settings = settings
         app.state.http = client
+        metrics_server = None
+        if settings.metrics_port:
+            metrics_server, _ = metrics.start_server(settings.metrics_host, settings.metrics_port)
+        else:
+            log.warning("metrics off: set METRICS_PORT")
         try:
             yield
         finally:
+            if metrics_server is not None:
+                metrics_server.shutdown()
+                metrics_server.server_close()
             if http is None:
                 client.close()
             conn.close()
@@ -61,6 +69,8 @@ def create_app(settings: Settings | None = None, http: httpx.Client | None = Non
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type"],
     )
+    # Added last, so it wraps the CORS and admin middleware and times every response.
+    app.add_middleware(metrics.MetricsMiddleware)
 
     @app.get("/api/health")
     def health() -> JSONResponse:
