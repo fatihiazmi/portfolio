@@ -31,7 +31,7 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T21 | 12 | Grafana as code: data source, 3 dashboards, 5 alert rules, Telegram contact point. Cloudflare Tunnel and Access for `grafana.<domain>`. **Owner input:** Telegram bot token and chat ID. | T20 | A fresh `obs` container loads everything from git. `grafana.<domain>` returns 403 without login. | done |
 | T22 | 12 | `/api/stack` with the PromQL allowlist. `/stack` page with live panels, 24 h charts, offline state, and the site architecture diagram. | T8, T20 | `/stack` shows live data, and it shows the offline state when the `app` LXC stops. | done |
 | T23 | 13 | Homelab Platform: make `infra/` public with a full secrets scan. Write the case study with Grafana screenshots and one restore or outage drill. Publish as the 7th node. | T19, T21, T22 | Node and case study live. Secret scan on the public repo is clean. | done |
-| T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | in progress |
+| T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | done |
 | T25 | 14–15 | Fix the failures found in T24. | T24 | Every T24 failure is resolved or moved to v2 with a written reason. | todo |
 | T26 | 15 | Launch: save a fresh `projects.snapshot.json` in the repo. Final publish. **Owner:** post the link on LinkedIn and send it to warm contacts. | T25 | Site live on the domain on 2026-11-18. | todo |
 
@@ -47,9 +47,9 @@ Acceptance run on 2026-11-05 against spec section 12, deployed `b7e7995`.
 | 3 personal repos with GitHub links | pass | `ledger-engine`, `seatly`, `shieldwallet` pages link their repos. Each repo URL 200. |
 | Homelab node, public `infra/`, no secrets | pass | `homelab-platform` page 200, 4 images. Secret scan from T23 clean. |
 | Grafana loads from git on a fresh container | pass | Throwaway Grafana 13.2.4 from `git archive HEAD`: 3 dashboards, 5 rules, 3 contact points, 1 template, 0 errors. |
-| `SiteDown` to Telegram within 5 min | pass, see F3 | `pct stop 202` 07:45:21Z. Pending 07:46:40Z. Firing 07:49:28Z. Sent after 30 s `group_wait`, about 4 min 37 s. Telegram receipt: owner to check. |
+| `SiteDown` to Telegram within 5 min | pass, see F3 | `pct stop 202` 07:45:21Z. Pending 07:46:40Z. Firing 07:49:28Z. Sent after 30 s `group_wait`, about 4 min 37 s. Owner received the Telegram message. |
 | `grafana.<domain>` 403 without login | pass, see F2 | Edge returns 302 to the Access login. |
-| Test lead from a phone | owner | Owner submits one lead from a phone on mobile data. |
+| Test lead from a phone | pass | Lead 4 in SQLite at 08:05:58Z, `POST /api/contact` 200. Owner received the email. |
 | `/admin` 403 without login | pass, see F2 | Edge returns 302 to the Access login. Origin returns 403. |
 | LXC stopped: static site up, form `mailto:` | pass | `/` 200. Form logged `mailto mode: health probe failed`. Mail label and note shown. |
 | Litestream restore | pass | `restore-drill.sh` 07:40:21Z: integrity `ok`, 8 tables match. |
