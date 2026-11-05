@@ -6,7 +6,7 @@
  * of the viewport, the 3D scene (`src/lib/map/scene.ts`) loads and fades in over it.
  * The node list under the canvas carries every project for keyboards, screen readers, and search.
  * List buttons and canvas clicks open the same side panel.
- * Without WebGL, the SVG stays, and the list and panel still work.
+ * Without WebGL, or with WebGL drawn in software, the SVG stays. The list and panel still work.
  */
 import type { Edge, Project } from "../lib/projects";
 import MapStatic from "./MapStatic.astro";
@@ -247,9 +247,14 @@ const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
       (n): n is NodeData & MapNode => n.x !== null && n.z !== null,
     );
     if (placed.length === 0) return;
-    // No WebGL: keep the SVG and skip the 3D download.
-    if (!hasWebGL()) {
-      console.info("[map] No WebGL. Showing the static map.");
+    // No WebGL, or software WebGL: keep the SVG and skip the 3D download.
+    const gpu = webglSupport();
+    if (gpu !== "hardware") {
+      console.info(
+        gpu === "none"
+          ? "[map] No WebGL. Showing the static map."
+          : "[map] WebGL runs in software. Showing the static map.",
+      );
       return;
     }
 
@@ -293,15 +298,26 @@ const chip = "border border-line px-2 py-0.5 font-mono text-xs text-paper";
     }
   }
 
-  /** True when the browser can create a WebGL context. The probe context is released at once. */
-  function hasWebGL(): boolean {
+  /**
+   * Probes WebGL once. The probe context is released at once.
+   * Software renderers draw WebGL on the CPU. The animated scene then blocks the main
+   * thread for about 150 ms a frame on a mid-range phone CPU (plan T25 F1).
+   * `failIfMajorPerformanceCaveat` does not catch SwiftShader in Chrome 156, so the
+   * renderer name decides. An unknown or hidden name counts as `hardware`.
+   */
+  function webglSupport(): "none" | "software" | "hardware" {
+    // Inside the function: the init code above calls it before a module-level `const` exists.
+    const software = /swiftshader|llvmpipe|softpipe|basic render|software/i;
     try {
       const canvas = document.createElement("canvas");
       const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-      gl?.getExtension("WEBGL_lose_context")?.loseContext();
-      return gl !== null;
+      if (!gl) return "none";
+      const info = gl.getExtension("WEBGL_debug_renderer_info");
+      const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
+      gl.getExtension("WEBGL_lose_context")?.loseContext();
+      return software.test(name) ? "software" : "hardware";
     } catch {
-      return false;
+      return "none";
     }
   }
 </script>
