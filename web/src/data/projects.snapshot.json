@@ -1,4 +1,362 @@
 {
-  "projects": [],
-  "edges": []
+  "projects": [
+    {
+      "slug": "sims",
+      "title": "SiMS",
+      "client": "Safwa Global Ventures",
+      "kind": "client",
+      "year": 2026,
+      "summary": "Road-maintenance CMMS where I built the cross-module task Inbox, the machinery safety register, and monitoring sheets.",
+      "problem_md": "Road-maintenance work moves from complaint to notice of defect, to approval, to work order, to package. Each step is a record with its own workflow, roles, and area office. Staff need one list of the work waiting on them across every module. The notification bell must agree with that list. The first version computed the list per request from a 19-arm union. Under load, those queries hit the database timeout.",
+      "built_md": "- **My Task Inbox**: one stored task table across the workflow modules. Same-transaction triggers on 25 tables keep it current. A pg_cron job reconciles it every 10 minutes and logs drift.\n- **My Task page and bell**: module cards, a role-scoped overview strip, and per-module columns and filters. Each row links to its record's task. The page and the bell read the Inbox through one interface.\n- **Machinery safety register**: certificate status engine with a daily sweep, unique plates with a supersede chain, and expiry reminders. It also has a super-admin override, a watcher coverage warning, and registration with three photos in one transaction.\n- **QR verification page**: each machine carries a QR sticker. A phone scan opens a signed-out page that says whether the machine can operate.\n- **Monitoring sheets**: list pages for complaints, NOD, RFA, WIS, MP, RFI, work orders, variation orders, packaging, tendering, and machinery. Each matches the client's monitoring sheet layout, with shared filters and A3 export.\n- **Document output**: print layouts for work orders, work instructions, letters of award, BQ comparisons, and RFQs.\n- **Access control**: a permission matrix aligned with the sidebar. Role write toggles are enforced in the UI and in the database.\n- **Public tender board**: open tender notices on the login page, served by one public read function with anonymized bids.\n- **User manuals and ticketing**: a manual library with PDF and video viewers. A ticket workspace keeps a logged event thread.\n- **Team**: I was a builder in a team of 3 developers, from 13 August to 4 November 2026. The wider system also has public complaint intake, contractor registration, and online tender payment.",
+      "decisions_md": "1. **Store the Inbox as a table instead of a union computed per request.** Staging logged 874 error responses in one hour on 22 September 2026. Two ADRs traced the timeouts to planning the 19-arm union, at 16–41 MB of memory per read. The bell and the page also disagreed on 4 ownership rules. One table gives both readers one rule set (ADR-003).\n2. **Let Inbox triggers fail open, and reconcile every 10 minutes.** A trigger error logs to a drift table, and the source write still commits. The trigger path and the reconcile job run the same producer view, so they cannot disagree (ADR-003, D28 and D30).\n3. **Serve the QR page through one function that names every column.** It is the only surface granted to anonymous users. A column added to the machines table later cannot reach the public page by accident. Phone number, serial number, and override reason are excluded by name.\n4. **Floor the expiry reminder window.** 612 of the 664 imported machines carried certificates that expired years earlier. The unfloored window targeted 530 machines, and the floored window targeted 1. An expired machine gets a red badge, not a reminder. The migration refuses to apply if the floor stops working.",
+      "outcome_md": "- 302 commits across 2 git identities, from 13 August to 4 November 2026.\n- 136 of the 1,133 migration files on main come from my commits.\n- 110 of the 148 rollback scripts on main come from my commits.\n- 164 of the 308 Vitest test files on main come from my commits.\n- 15 pgTAP files test the Inbox contract, triggers, sync, and ownership rules.\n- The Inbox covers 7 task kinds, with row triggers on 25 tables and statement triggers on 7 config tables.\n- Planning one module per My Task page call cut page p95 by 33%, and planning time by 1.3–6.6×.\n- 21 of my commits on main rebuild module lists as client monitoring sheets.\n- 3 architecture decision records document the My Task work.",
+      "stack": [
+        "React 19",
+        "TypeScript",
+        "Vite 8",
+        "Tailwind CSS 4",
+        "shadcn/ui",
+        "TanStack Query",
+        "Supabase",
+        "PostgreSQL",
+        "pg_cron",
+        "pgTAP",
+        "Vitest",
+        "Playwright",
+        "jsPDF"
+      ],
+      "repo_url": null,
+      "diagram_url": "https://img.fatihiazmi.dev/sims/diagram-eb3386e5cecbd898.svg",
+      "map_x": -6,
+      "map_z": -2,
+      "updated_at": "2026-11-04T23:43:00.817902+00:00",
+      "images": [
+        {
+          "url": "https://img.fatihiazmi.dev/sims/a84d99bcb67a2937.png",
+          "alt": "My Task Center with module cards and seven pending approval tasks for a site engineer",
+          "caption": "The My Task page reads one stored Inbox and files each task under its module card."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/sims/1d3ce537e390a035.png",
+          "alt": "Machine detail page with expiring-soon badge, days-left countdown, QR code, and ownership",
+          "caption": "A machine detail page shows certificate status, inspection history, reminder coverage, and its QR sticker."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/sims/9d4503644bcab411.png",
+          "alt": "Phone view of public machine verification page marked allowed to operate",
+          "caption": "Scanning a machine's QR sticker opens this signed-out page on a phone."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/sims/1cba48f40b1935b9.png",
+          "alt": "Work order list laid out as a grouped monitoring sheet with ten rows",
+          "caption": "The work order list follows the client's monitoring sheet columns and grouped headers."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/sims/05ff887f82c20f9b.png",
+          "alt": "Login page with public tender notice board listing open and closing tenders",
+          "caption": "The login page carries a public tender board with search and status filters."
+        }
+      ]
+    },
+    {
+      "slug": "nadi",
+      "title": "NADI e-System",
+      "client": "MCMC",
+      "kind": "client",
+      "year": 2025,
+      "summary": "Role-scoped Smart Services dashboards, programme workflows, and security fixes for Malaysia's NADI community centre management system.",
+      "problem_md": "NADI e-System runs the network of NADI community digital centres in Malaysia: sites, staff, members, assets, payroll, and programmes. Eight user groups share one app, including MCMC, DUSP, TP, SSO, centre staff, and members. Each group sees a different slice of the same events, sites, and people. The schema has 301 tables, so every dashboard query must carry the caller's role scope.",
+      "built_md": "- **SSO dashboards**: four screens for SSO users: overview, events, participations, and event breakdown. Each has date and pillar filters. The breakdown groups events by state, parliament, and DUN.\n- **PDF reports**: a download button on each SSO dashboard builds a PDF report from the same data hooks.\n- **Role-scoped queries**: one hook reads the SSO role and limits every dashboard query to the user's own events.\n- **NADI2U and NADI4U programme services**: typed services for list filters, sorting, and pagination. A NADI2U registration form in four sections with Zod validation. One badge config for all 15 programme statuses.\n- **Asset list**: database-side filters on six columns, server-side pagination, and seven new indexes.\n- **Penetration-test fixes**: ten findings closed in one commit. The fixes add a CORS allow-list, new RLS policies, and a trigger against role escalation. They also add CSV-injection sanitising, nginx security headers, and a login rate limit.\n- **Row-level security**: four helper SQL functions and new policies for user profiles and SSO profiles.\n- **Smaller fixes**: payroll status filters, salary report counts, the KPI performance form, and a session refresh race. Another fix stops a maintenance list from losing its filters while loading.\n- **Repository setup (2025)**: GitHub workflows for CodeQL, Dependabot, dependency review, ESLint, Snyk, and Node.js CI.\n- **Later changes by others**: role-specific pages from other team members now replace the NADI2U list and form pages. The status badge is still in use.\n- **Role**: builder in a team of at least 10 people, from 2025-02-19 to 2026-02-10. The wider system also has attendance, POS, site management, and a MyKad card-reader bridge that others built.",
+      "decisions_md": "1. **One shared event-count query for all SSO dashboards.** The commit gives the reason: consistent event counts across dashboards. A later commit moves pillar loading into one shared hook to remove duplicate code.\n2. **Filter the NADI2U list in the browser, and keep the server-side version.** The hook comment says client-side filtering suits small datasets and avoids CORS errors. The server-side query stays in the codebase for reuse.\n3. **Push asset filters and pagination into the database, backed by indexes.** The index migration states its target: asset queries from 3–5 seconds down to under 500 ms. Related IDs resolve in parallel subqueries before the main query runs.\n4. **Enforce the penetration-test fixes in PostgreSQL, not only in the UI.** A trigger blocks users from changing their own user type to super admin. RLS policies guard member profiles and the programme attachments storage bucket.",
+      "outcome_md": "- 66 commits across two identities: 33 feature and fix commits, and 33 repository-setup and merge commits. The two sets share no commit.\n- 21,624 lines added and 6,340 removed across 215 file changes in the 33 feature and fix commits.\n- 4 SSO dashboard screens with 4 PDF report data hooks.\n- 3 SSO roles scoped by one role-filter hook: admin, PIC, and pillar.\n- 15 programme statuses mapped in one status config.\n- 10 penetration-test findings fixed in one commit.\n- 8 of the repo's 20 migrations: 17 RLS policies, 8 SQL functions, 2 triggers, and 7 indexes.\n- 6 GitHub workflow and Dependabot config files created in February 2025.",
+      "stack": [
+        "React 18",
+        "TypeScript",
+        "Vite 7",
+        "Tailwind CSS",
+        "TanStack Query",
+        "Supabase",
+        "PostgreSQL",
+        "Deno Edge Functions",
+        "Docker",
+        "nginx",
+        "AWS ECS",
+        "AWS EKS"
+      ],
+      "repo_url": null,
+      "diagram_url": "https://img.fatihiazmi.dev/nadi/diagram-fd41b342b8a51dd7.svg",
+      "map_x": -2,
+      "map_z": 2,
+      "updated_at": "2026-11-04T23:43:03.396087+00:00",
+      "images": [
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/9781a62be305c12f.png",
+          "alt": "SSO Dashboard with event, participant, and attendance cards, plus type and state charts",
+          "caption": "The SSO dashboard counts events and participants for the signed-in SSO user only."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/71d7d98107a91179.png",
+          "alt": "Event Breakdown page with an events-by-type pie chart and state, parliament, DUN tabs",
+          "caption": "The event breakdown splits Smart Services events by programme type and by location."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/91945035945a4acb.png",
+          "alt": "Events Overview with summary cards and upcoming and recent event lists with status badges",
+          "caption": "The events overview lists upcoming and recent events with participant counts and status."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/bf57b21c98443132.png",
+          "alt": "NADI2U programme table with date, title, location, and status filters and status badges",
+          "caption": "The NADI2U programme list as built in December 2025, before role-specific pages replaced it."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/d5a0a83081b06ae6.png",
+          "alt": "NADI2U registration form with state checkboxes and a searchable site list",
+          "caption": "The NADI2U registration form loads sites for the selected states."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/nadi/8ae11b040cbdbb35.png",
+          "alt": "Asset Management table with stat cards and an open Type filter showing counts",
+          "caption": "Asset filters and pagination run in the database, and each filter option shows its count."
+        }
+      ]
+    },
+    {
+      "slug": "otms",
+      "title": "OTMS",
+      "client": "Tidal Group",
+      "kind": "client",
+      "year": 2025,
+      "summary": "Overtime portal for Tidal Group: phone submission, supervisor and HR approval, state-aware holiday rates, plus payroll and finance.",
+      "problem_md": "Tidal Group needed staff to claim overtime from their phones and have it approved before payroll. The OT rate depends on the day type, and Malaysian public holidays differ by state. Some overtime is instructed by a supervisor other than the employee's own, so that person must confirm it first. Every approver needs to hear about pending work without opening the app.",
+      "built_md": "- **OT approval workflow**: two routes over 9 statuses. Route A goes direct supervisor, then HR. Route B adds a confirm-or-deny step for the instructing supervisor. Bulk approval and HR recertification sit on top.\n- **Approval notifications**: 12 notification Edge Functions alert the next approver or the employee at each workflow step.\n- **Push and PWA**: Web Push with VAPID keys first, then a move to Firebase Cloud Messaging. Per-user notification preferences, install guides for Android, iOS, and Firefox, and iOS icons and splash screens.\n- **State holiday calendar**: an Edge Function scrapes Malaysian holidays per state. HR adds company overrides. Three pg_cron jobs refresh the data, fill next year's calendar every October, and check replacement holidays daily.\n- **Day-type detection**: the OT form and database functions read holidays for the OT location state. The form shows hours and the day type before submit.\n- **Submission rules**: an 8-day submission window, a monthly cutoff day, and a grace period mode HR can switch on.\n- **Employee lifecycle**: soft delete with archive, restore, and hard delete, plus token-based password reset.\n- **Payroll and HR**: individual payroll form, PCB tax calculation with dependents, EIS and SOCSO age rules, consolidated payroll memo with approval trail, and statutory text exports.\n- **Finance module**: general ledger, AP and AR invoices and payments, payment vouchers, multi-fund petty cash, and bank reconciliation.\n- **Claims, leave, and OT reports**: claims routing with a director bypass and cutoff cycles. Monthly leave accrual, and PDF and Excel OT reports per company.\n- **OT domain refactor**: a pure TypeScript domain layer with a configurable workflow engine and an HR workflow builder. It lives on a feature branch and is not merged into the main line yet.\n- **Role**: Builder from 2025-11-03 to 2026-05-28. I wrote 311 of 679 commits. The Lovable AI bot wrote 366, and a company account wrote 2.",
+      "decisions_md": "1. **Detect holidays per employee state, not per company.** A bug missed state-only holidays, such as the Selangor holiday on 11 Dec 2025. OT on those days got the wrong day type. The fix adds an employee-aware day-type function and an audit query that lists the affected OT records. A later change uses the OT location state instead.\n2. **Enforce the Route B approval split in row-level security.** The old policies gave supervisors more access to OT requests than their role needed. New policies restrict access by role, including the instructing supervisor and HR. The migration drops the old permissive policies.\n3. **Fetch salary fields only for HR.** The approval query requests basic salary only when the viewer has the HR role. Supervisors approve hours without seeing pay.\n4. **Migrate to the workflow engine by adding, never altering.** Old and new code must run side by side on live requests. New tables and nullable columns sit beside the old 9-value status. New code writes both the old and the new status. Old columns go only after every hook moves over and passes tests.",
+      "outcome_md": "- 311 commits across 2 identities, 2025-11-03 to 2026-05-28, out of 679 in the repo.\n- 24 of 33 Edge Functions on the main line, first added by me.\n- 119 of 185 database migrations on the main line, first added by me.\n- 29 of 29 test files on the main line, first added by me: Vitest unit and integration tests, and Playwright end-to-end specs.\n- 16 more test files cover the OT domain refactor on its feature branch.\n- 9 OT statuses across 2 approval routes.\n- 3 pg_cron jobs keep the holiday calendar current.\n- 30 Mermaid files document 15 business workflows as a state and a flow diagram each.",
+      "stack": [
+        "React 18",
+        "TypeScript",
+        "Vite 5",
+        "Tailwind CSS",
+        "shadcn/ui",
+        "TanStack Query",
+        "Supabase",
+        "PostgreSQL",
+        "Supabase Edge Functions",
+        "pg_cron",
+        "Firebase Cloud Messaging",
+        "Workbox PWA",
+        "Vitest",
+        "Playwright",
+        "GitHub Actions"
+      ],
+      "repo_url": null,
+      "diagram_url": "https://img.fatihiazmi.dev/otms/diagram-03f8d1e0c581761f.svg",
+      "map_x": 2,
+      "map_z": -3,
+      "updated_at": "2026-11-04T23:43:05.719405+00:00",
+      "images": [
+        {
+          "url": "https://img.fatihiazmi.dev/otms/c8115c18f3dcc123.png",
+          "alt": "Phone OT form with Selangor location, 6.0 hours, and a PH day-type badge",
+          "caption": "An employee submits overtime from a phone, and the form detects the public holiday before submit."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/otms/8c504d6898b59823.png",
+          "alt": "Phone list of OT requests with awaiting, confirmed, and certified statuses",
+          "caption": "Employees track each request through supervisor and HR approval on their phone."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/otms/df15752364efe381.png",
+          "alt": "Supervisor table of pending OT requests with Verify and Reject buttons",
+          "caption": "The supervisor queue holds Route A requests and a Route B request awaiting confirmation."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/otms/8fedce49cb152639.png",
+          "alt": "HR detail panel showing respective supervisor confirmation, ORP, HRP, and OT amount",
+          "caption": "HR sees the confirmation trail and the rate calculation before certifying."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/otms/990dcd3e155b9eab.png",
+          "alt": "March calendar with public, Selangor state, company, and leave events",
+          "caption": "The calendar merges federal, state, company, and personal leave days for the employee's state."
+        }
+      ]
+    },
+    {
+      "slug": "ledger-engine",
+      "title": "Ledger Engine",
+      "client": null,
+      "kind": "personal",
+      "year": 2026,
+      "summary": "Double-entry payment ledger in Go with event sourcing, CQRS, transfer sagas, idempotency keys, and a transactional outbox.",
+      "problem_md": "A payment ledger must never create or lose money, even when a request fails halfway. Each transfer touches several accounts, an event log, read tables, and downstream consumers. A client retry or a crash between two writes can double-charge an account or drop an event. Ledger Engine is a hobby project. It builds the patterns production fintech systems use against these errors.",
+      "built_md": "- **Domain core** (`internal/domain/ledger`, `internal/domain/account`): `Money` stores int64 minor units and checks the currency at creation. `Transaction` rejects unbalanced, zero-amount, single-leg, and mixed-currency entries. Asset accounts reject overdrafts. Accounts move through Active, Suspended, and Closed states.\n- **Event store** (`internal/infra/postgres/event_store.go`): append-only Postgres `events` table. A unique `(aggregate_id, version)` constraint gives optimistic concurrency. A snapshot table supports partial replay.\n- **CQRS read side** (`internal/projection`): a projector writes `account_balances` and `transaction_history` with `balance_after`. A query service serves the read endpoints from these tables.\n- **Transfer saga** (`internal/app/transfer_service.go`): debits the source into a suspense account, then credits the destination. On a failed credit, a compensating transaction returns the money. States run INITIATED → DEBITED → COMPLETED, or FAILED → COMPENSATED, with a step log.\n- **Idempotency layer** (`internal/infra/http/idempotency.go`, `internal/infra/redis`): POST requests with an `Idempotency-Key` header run once. Repeats get the cached response for 24 hours. A Redis `SET NX` lock returns 409 to concurrent duplicates.\n- **Transactional outbox** (`internal/infra/postgres/outbox.go`, `internal/app/outbox_worker.go`): each event and its outbox row commit in one Postgres transaction. A worker polls every second in batches of 50 and marks rows published.\n- **Observability** (`internal/infra/observability`): `/health` reports Postgres and Redis latency and the outbox backlog. `/metrics` exposes HTTP latency and request counts through OpenTelemetry and Prometheus. Logs are JSON through `slog`.\n- **REST API and dashboard** (`internal/infra/http`, `web/static`): 7 endpoints under `/api/v1` on chi. A plain HTML/CSS/JS dashboard ships inside the Go binary through `embed.FS`.",
+      "decisions_md": "1. **Enforce the double-entry rule in the `Transaction` constructor.** The code comment states the aim: \"If it exists, it's balanced.\" No caller can hold an unbalanced transaction, so later code needs no balance check.\n2. **Write each event and its outbox row in one Postgres transaction.** The commit and code name the reason: this solves the dual-write problem. If either insert fails, both roll back, so the event log and the outbox never diverge.\n3. **Run transfers as an orchestrated saga through a suspense account.** The suspense account holds money in flight between the debit and the credit. If the credit fails, a compensating transaction reverses the debit automatically.\n4. **Gate write requests with Redis idempotency keys.** The commit names the goal: retry-safe payments. A duplicate request replays the stored response, and a lock stops concurrent duplicates from running twice.",
+      "outcome_md": "- 38 Go test functions: 30 unit tests and 8 integration tests.\n- 12 property-based tests with `rapid` generate random inputs on each run.\n- Property tests check that credits equal debits, unbalanced entries fail, and asset debits never exceed the balance.\n- Money conservation holds across 1 to 10 random transfers per run, both direct and through the saga.\n- All 8 integration tests run against a real PostgreSQL 16 container through testcontainers-go.\n- Replaying 100 stored events rebuilds the expected balance. A snapshot at version 50 plus 50 replayed events matches a full replay.\n- 2,720 lines of Go source and 1,527 lines of Go tests, across 4 SQL migrations.\n- 13 commits by one author, all on 2026-03-27. 12 commits carry a `Co-Authored-By: Claude Opus 4.6` trailer.",
+      "stack": [
+        "Go",
+        "PostgreSQL",
+        "Redis",
+        "chi",
+        "pgx",
+        "OpenTelemetry",
+        "Prometheus",
+        "rapid",
+        "testify",
+        "testcontainers-go",
+        "Docker Compose",
+        "HTML/CSS/JS"
+      ],
+      "repo_url": "https://github.com/fatihiazmi/ledger-engine",
+      "diagram_url": "https://img.fatihiazmi.dev/ledger-engine/diagram-a805208f8667830f.svg",
+      "map_x": 7,
+      "map_z": 1,
+      "updated_at": "2026-11-04T14:14:10.277276+00:00",
+      "images": []
+    },
+    {
+      "slug": "seatly",
+      "title": "Seatly",
+      "client": null,
+      "kind": "personal",
+      "year": 2026,
+      "summary": "Cinema seat reservation system where PostgreSQL row locks let exactly one request hold a contested seat.",
+      "problem_md": "Two customers can request the same cinema seat in the same instant. A group request must win every seat it asks for, or none. A client that loses a response cannot tell a committed request from a lost one, so a retry must not acquire seats twice. Checks in the browser, cache, or application memory race each other, so only the database can decide who owns a seat. Seatly is a hobby project built to solve this end to end.",
+      "built_md": "- **Catalogue**: movies, venues, halls, and seats, with companion-seat links whose adjacency PostgreSQL enforces.\n- **Showtime publishing**: publishing writes one inventory row per active seat. Triggers freeze the hall layout while an upcoming showtime uses it.\n- **Public seat map**: `GET /showtimes/{id}/seat-map` needs no login. It returns a selectable flag per seat and an inventory version for polling.\n- **Seat hold transaction**: `AcquireSeatHold` locks the showtime, then seats by ascending ID. It holds all requested seats or none, for five minutes.\n- **Outbox and audit**: the hold, its outbox event, and its audit event commit in one transaction. A trigger makes `audit_events` append-only.\n- **Idempotency middleware**: `EnforceIdempotency` requires an `Idempotency-Key` header. It replays the stored 201 or 409 outcome on retry.\n- **Concurrency gate**: `php artisan seatly:concurrency-gate` forks one process per attempt and releases all of them at one instant.\n- **Invariant checker**: `php artisan seatly:invariants` runs 10 SQL checks against committed state and exits non-zero on any violation.\n- **Method**: one author. All 16 commits carry a Claude co-author trailer. `CLAUDE.md` requires test-first work with recorded red and green runs.\n- **Not built yet**: the seat-picking screen, simulated payment, booking confirmation, and QR codes. The README lists these as Phases 4–6.",
+      "decisions_md": "1. **PostgreSQL decides seat ownership.** The seat map is a snapshot and goes stale. A stale map can cause a rejection, never a false success (ADR-004).\n2. **Lock the showtime first, then seats in ascending ID order.** Two requests that lock `{A1, A2}` and `{A2, A1}` in request order deadlock. Sorted order makes the second request wait. The showtime lock also serializes holds against publication and cancellation.\n3. **Require the idempotency key and claim it before the command runs.** A guarantee a client opts out of by omitting a header is no guarantee. The early claim lets a duplicate arriving mid-flight see the first request.\n4. **Run integration tests on real PostgreSQL only.** The suite refuses to run on SQLite. The concurrency behaviour under test is PostgreSQL's, so a green run on another engine proves nothing.",
+      "outcome_md": "- 248 tests and 688 assertions pass in the full PHPUnit run at the end of Phase 3.\n- 600 coordinated hold attempts run across 6 seeded runs of 100 forked processes each.\n- Every run ends with exactly 1 winner and 99 deterministic `SEAT_TAKEN` conflicts.\n- 0 deadlocks and 0 unhandled errors, counted from `pg_stat_database.deadlocks`.\n- Attempts start within about 50 ms of each other. Latency spreads from about 90 ms to 1.9 s, so the attempts overlapped.\n- 10 invariant SQL checks report clean after every gate run. Tests plant a violation for 8 checks and confirm each fires. For the other 2, tests confirm a constraint rejects the bad write.\n- 8 PostgreSQL triggers enforce layout freeze, companion pairing, hold integrity, and the append-only audit log.\n- 20 architecture decision records document the design.\n- 9 tasks keep a recorded failing test run from before the fix.\n- Open finding: p95 latency is 1.25–1.83 s under the 100-way burst. The policy target is 750 ms. The repo reports this and does not hide it.",
+      "stack": [
+        "Laravel 13",
+        "PHP 8.5",
+        "PostgreSQL 16",
+        "Vue 3",
+        "Inertia",
+        "TypeScript",
+        "Tailwind CSS",
+        "Laravel Fortify",
+        "PHPUnit",
+        "PHPStan",
+        "Playwright",
+        "Docker Compose"
+      ],
+      "repo_url": "https://github.com/fatihiazmi/seatly",
+      "diagram_url": "https://img.fatihiazmi.dev/seatly/diagram-e26b9e6daed1d91d.svg",
+      "map_x": 9,
+      "map_z": -4,
+      "updated_at": "2026-11-04T14:14:10.853442+00:00",
+      "images": []
+    },
+    {
+      "slug": "shieldwallet",
+      "title": "ShieldWallet",
+      "client": null,
+      "kind": "personal",
+      "year": 2026,
+      "summary": "Hobby fraud-scoring engine for eWallet transfers, with explained ALLOW/WARN/BLOCK verdicts, built for FINHACK 2026.",
+      "problem_md": "eWallet fraud in Malaysia takes five forms: mule transfers, love scams, investment scams, phishing, and refund scams. Each form has a different behavioural signature, so no single rule catches all five. Fraud is about 3% of transactions, so a model that flags nothing still scores 97% accuracy. A blocked transfer also needs a reason the user understands. ShieldWallet is a hobby project, built as an entry for TNG Digital FINHACK 2026.",
+      "built_md": "- **Synthetic dataset generator**: 1,000 user profiles and 5 fraud types, each with its own signature and share of cases.\n- **Feature engineering** (`FeatureEngineer`): 7 raw transaction features plus 7 features relative to the user's own history.\n- **Training and evaluation** (`FraudModelTrainer`): Gradient Boosting with class weights, stratified 5-fold cross-validation, model and metadata saved to disk.\n- **Scoring engine** (`FraudScorer`): turns the fraud probability into a 0–100 score and a verdict. It returns up to 5 human-readable reasons, ranked by severity.\n- **Event log** (`EventLogger`): append-only audit trail of scored, confirmed, and reported transfers, with verdict statistics.\n- **Transfer flow**: FastAPI, Jinja2, and HTMX pages. A WARN asks the user to confirm. A BLOCK offers a scam report.\n- **Admin dashboard**: live event stream over Server-Sent Events, Chart.js charts, and stat cards that refresh every 5 seconds.\n- **ML exercise series**: 10 staged scripts, from a first model through imbalance, features, explainability, SMOTE, cross-validation, and model comparison.",
+      "decisions_md": "1. **Class weights (fraud weighted 10x) for the imbalance.** The code states that missing a fraud case is 10x worse than blocking a normal one. Exercise 08 compares weights against SMOTE under cross-validation and keeps weights.\n2. **Decision threshold of 0.3, not the default 0.5.** With 97% normal data the model needs high certainty before it flags fraud. A lower threshold catches more fraud.\n3. **Fixed score bands for ALLOW (0–39), WARN (40–69), and BLOCK (70–100).** The bands are business rules, tunable per deployment. The model stays the same when a deployment changes them.\n4. **Gradient Boosting, chosen from 6 algorithms.** It supports feature importance for explainability and `predict_proba` for risk scores. Its training time suits a hackathon-sized dataset.",
+      "outcome_md": "- 14 model features: 7 raw and 7 engineered.\n- 5-fold stratified cross-validation on synthetic data: precision 97.5%, recall 98.1%, F1 0.978, AUC-PR 0.997.\n- Training data: 30,000 normal and 927 fraud transactions, all synthetic.\n- 5 fraud types modelled: mule transfer, love scam, investment scam, phishing, refund scam.\n- 6 algorithms compared under cross-validation.\n- 7 risk-reason signals, with at most 5 shown per flagged transfer.\n- 3 verdict tiers: ALLOW, WARN, BLOCK.\n- 10 demo events seeded at startup: 5 normal, 2 suspicious, 3 scam patterns.\n- Scope: the web demo holds users, recipients, and events in memory. It fixes `velocity_1h` at 1.\n- Scope: the repo has no automated tests and no CI config.",
+      "stack": [
+        "Python",
+        "FastAPI",
+        "Uvicorn",
+        "Jinja2",
+        "HTMX",
+        "Tailwind CSS",
+        "Chart.js",
+        "scikit-learn",
+        "imbalanced-learn",
+        "pandas",
+        "NumPy",
+        "Matplotlib",
+        "uv"
+      ],
+      "repo_url": "https://github.com/fatihiazmi/shieldwallet",
+      "diagram_url": "https://img.fatihiazmi.dev/shieldwallet/diagram-0ed780a54dbc15ee.svg",
+      "map_x": 10,
+      "map_z": 5,
+      "updated_at": "2026-11-04T14:14:11.375007+00:00",
+      "images": []
+    },
+    {
+      "slug": "homelab-platform",
+      "title": "Homelab Platform",
+      "client": null,
+      "kind": "personal",
+      "year": 2026,
+      "summary": "The platform this site runs on: Proxmox, Cloudflare Tunnel, Litestream, Prometheus and Grafana as code.",
+      "problem_md": "This site's API, database, and monitoring run on a 4 GB Proxmox host at home, on a residential line. No port on the home router may open to the internet. The host has no RAM to spare. The site must stay up when the homelab is down. Leads in the database need an off-site backup that a restore can prove. The `infra/` code is public, so no secret can live in git.",
+      "built_md": "- **Two unprivileged LXCs**: `app` runs FastAPI, SQLite, Litestream, cloudflared, and `node_exporter` in 512 MB. `obs` runs Prometheus, Grafana, exporters, and its own cloudflared in 768 MB. Each runs one Docker Compose file from the public repo.\n- **Cloudflare Tunnel**: each LXC dials out to Cloudflare. No port is open on the home router. Grafana sits behind Cloudflare Access, and it also checks the Access JWT itself.\n- **Static front, live back**: Pages serves the site. The build falls back to a snapshot in the repo when the API is down. `/stack` shows an offline state with the last-seen time.\n- **Backups**: Litestream syncs the SQLite WAL to Cloudflare R2 every second and keeps 7 days. `restore-drill.sh` restores into a fresh directory, runs an integrity check, and compares row counts with the live database.\n- **Metrics**: Prometheus scrapes 9 targets every 30 s and keeps 7 days. The Proxmox exporter uses a read-only `PVEAuditor` token. Blackbox probes the public site and `/api/health` through the internet every 60 s.\n- **Grafana as code**: a Python script generates the 3 dashboards. The data source, 5 alert rules, contact points, and alert email layout load from files at start. Nothing is created by hand in the UI.\n- **Alerts**: `SiteDown`, `ContactErrors`, `BackupStale`, `DiskHigh`, and `NewLead` go to Telegram, with email through Resend as backup.\n- **Public `/stack` page**: the API answers from a fixed allowlist of PromQL queries, with a 30 s shared cache. It returns numbers and time series only. No hostnames, IPs, or host labels leave the LAN.\n- **Secret hygiene**: gitleaks runs on every commit. Keys live in `.env` files with mode 600 on each LXC.",
+      "decisions_md": "1. **Dial out through Cloudflare Tunnel instead of forwarding ports.** An open port invites scans of the home network. The tunnel needs no inbound rule and no fixed IP. The Proxmox web UI and Prometheus never go through it.\n2. **Give monitoring its own LXC and its own tunnel.** When the `app` LXC stops, Grafana and the alerts keep running and stay reachable. The memory limits of all services add up to each LXC's RAM, so one service cannot starve the host.\n3. **Alert on backup lag, not on snapshot age.** Litestream 0.5 uploads only when the data changes. On a quiet site the last upload gets old while the backup stays current. A recording rule measures how long the newest change has waited for an upload, and `BackupStale` fires above 15 minutes.\n4. **Serve `/stack` from an allowlist, never from raw PromQL.** The public page cannot send its own queries to Prometheus. A query returns numbers with host labels removed, so the page shows the homelab's health without mapping its network.",
+      "outcome_md": "- 9 of 9 Prometheus targets up, with about 2,800 series.\n- The `obs` LXC uses 375 MB of its 768 MB with Grafana running. The `app` LXC uses about 200 MB of 512 MB.\n- **Restore drill, 5 November 2026**: a full restore from R2, an integrity check, and a row-count compare took 6.8 s. Integrity was `ok`, and all 8 tables matched the live database.\n- **Outage drill**: stopping the `app` LXC switched `/stack` to its offline state, and `/` kept serving. After the restart, health came back in 20 s and all targets in 50 s.\n- **Incident, 5 November 2026, 15:20**: a power blip took down the home network. The host is a laptop, so it kept running on battery. Its Ethernet link dropped 4 times over 3 minutes. Both tunnels lost Cloudflare, and the API was unreachable for 3 min 4 s. Pages kept serving `/` and `/stack`.\n- Inside the host, nothing stopped. Every container kept running, and all 9 scrape targets stayed up through the outage. Each tunnel reconnected within 2 s of the link coming back, and both returned to 4 connections 4 minutes later without help.\n- No alert fired. The `/api/health` probe failed for about 2 minutes, under the 3-minute hold on `SiteDown`. The incident also showed a gap: the alerts leave through the same home line. A longer outage would alert only after the line comes back. A check from outside the homelab closes that gap.\n- The full git history of the public repo scans clean: 0 findings from gitleaks and from trufflehog across 53 commits.",
+      "stack": [
+        "Proxmox VE",
+        "LXC",
+        "Docker Compose",
+        "Cloudflare Tunnel",
+        "Cloudflare Access",
+        "Cloudflare Pages",
+        "Cloudflare R2",
+        "Litestream",
+        "SQLite",
+        "Prometheus",
+        "Grafana",
+        "blackbox_exporter",
+        "node_exporter",
+        "prometheus-pve-exporter",
+        "gitleaks"
+      ],
+      "repo_url": "https://github.com/fatihiazmi/portfolio",
+      "diagram_url": "https://img.fatihiazmi.dev/homelab-platform/diagram-720f4d9ed27b4a46.svg",
+      "map_x": 0,
+      "map_z": 8,
+      "updated_at": "2026-11-05T07:34:32.185827+00:00",
+      "images": [
+        {
+          "url": "https://img.fatihiazmi.dev/homelab-platform/d37362599af3ac01.png",
+          "alt": "Grafana Site overview dashboard with API availability, probe status, request rate, latency, error rate, and probe duration",
+          "caption": "The Site overview dashboard. The availability figure includes the outage drill and the power blip."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/homelab-platform/a2ad9e15e6813dbc.png",
+          "alt": "Grafana Homelab dashboard with guest status, tunnel connections, host uptime, host CPU and RAM, disk use, and guest RAM",
+          "caption": "The Homelab dashboard, read from the Proxmox API with a read-only token."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/homelab-platform/f88c9f763bf3281c.png",
+          "alt": "Grafana Backups dashboard with backup lag, last upload, sync errors, database size, and sync time",
+          "caption": "The Backups dashboard after loading this case study. Lag rose to 25 s and fell to 0 once Litestream uploaded the change to R2."
+        },
+        {
+          "url": "https://img.fatihiazmi.dev/homelab-platform/263b9a8a735f964f.png",
+          "alt": "Grafana alert rule list with SiteDown, ContactErrors, BackupStale, DiskHigh, and NewLead, all provisioned",
+          "caption": "All 5 alert rules load from files in the repo, so the UI marks them provisioned."
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "source": "sims",
+      "target": "nadi",
+      "label": "asset management"
+    },
+    {
+      "source": "otms",
+      "target": "nadi",
+      "label": "payroll, attendance"
+    },
+    {
+      "source": "seatly",
+      "target": "ledger-engine",
+      "label": "idempotent payments"
+    },
+    {
+      "source": "shieldwallet",
+      "target": "ledger-engine",
+      "label": "payment transactions"
+    }
+  ]
 }
