@@ -1,18 +1,21 @@
-# Backup recording rules. Plan T20.
+# Backup recording rules. Plans T20, T21.
 #
-# Litestream 0.5 exposes no "last snapshot" timestamp. It counts uploads to R2 in
-# `litestream_replica_operation_total{operation="PUT"}`. Each WAL sync with changes and
-# each hourly snapshot is one PUT. This rule turns the counter into "time of the last
-# upload", so the `BackupStale` alert (T21), /stack (T22), and the admin summary can read it.
+# Litestream 0.5 uploads to R2 only when the database changes. Each WAL sync with
+# changes, and each compaction of new data, is one PUT in
+# `litestream_replica_operation_total{operation="PUT"}`. With no writes there are no
+# uploads, and the backup stays current. So "time since the last upload" is not a
+# staleness signal on a quiet site.
 #
-# The subquery looks back 3 hours. With no upload in that window the series is absent.
+# The staleness signal is the backup lag: how long the newest change in the database
+# has waited without an upload after it.
 #
-# Litestream creates the counter series at its first upload after a start. Until then
-# `portfolio:litestream_backup_age_seconds` counts from the Litestream process start.
-# Litestream down: both series are absent. Treat absent as stale.
-# Known limit: with no upload in the 3 h window, the age is the time since the Litestream
-# start, not the true age. An old start overstates it. A recent restart understates it,
-# so `BackupStale` fires up to 75 min late after a restart.
+# - `litestream_txid` rises on every committed write.
+# - Both subqueries look back 3 hours. An older change or upload is not seen.
+# - Lag is 0 when the last upload is at or after the last change, or when there was no
+#   change in 3 hours.
+# - Litestream down or not scraped: the lag series is absent. Treat absent as stale.
+# - Known limit: a change left without an upload for over 3 hours drops out of the window,
+#   and the lag goes back to 0. `BackupStale` fires long before that.
 groups:
   - name: backup
     rules:
@@ -23,9 +26,26 @@ groups:
               (timestamp(increase(litestream_replica_operation_total{operation="PUT"}[1m]) > 0))[3h:30s]
             )
           )
-      - record: portfolio:litestream_backup_age_seconds
+
+      - record: portfolio:litestream_last_change_timestamp_seconds
         expr: >
-          time() - (
-            portfolio:litestream_last_upload_timestamp_seconds
-            or max by (job, lxc) (process_start_time_seconds{job="litestream"})
+          max by (job, lxc) (
+            max_over_time((timestamp(changes(litestream_txid[1m]) > 0))[3h:30s])
           )
+
+      - record: portfolio:litestream_backup_lag_seconds
+        expr: >
+          (
+            (
+              time() - portfolio:litestream_last_change_timestamp_seconds
+              unless on (job, lxc)
+              (
+                portfolio:litestream_last_upload_timestamp_seconds
+                >= on (job, lxc) portfolio:litestream_last_change_timestamp_seconds
+              )
+            )
+            or on (job, lxc)
+            (0 * max by (job, lxc) (litestream_txid))
+          )
+          and on (job, lxc)
+          (max by (job, lxc) (up{job="litestream"}) == 1)

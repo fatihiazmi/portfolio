@@ -424,7 +424,8 @@ homelab = dashboard(
     ],
 )
 
-AGE = "max(portfolio:litestream_backup_age_seconds)"
+LAG = "max(portfolio:litestream_backup_lag_seconds)"
+LAST_UPLOAD = "time() - max(portfolio:litestream_last_upload_timestamp_seconds)"
 backups = dashboard(
     "backups",
     "Backups",
@@ -432,14 +433,26 @@ backups = dashboard(
         [
             (
                 stat(
-                    "Last upload age",
-                    AGE,
+                    "Backup lag",
+                    LAG,
                     unit="s",
-                    steps=thresholds((None, "green"), (3600, "orange"), (4500, "red")),
-                    description="Time since the last Litestream upload to R2. "
-                    "Before the first upload after a Litestream start, time since that start.",
+                    steps=thresholds((None, "green"), (300, "orange"), (900, "red")),
+                    description="How long the newest database change has waited without an "
+                    "upload to R2. 0: the backup is current. No value: Litestream is down.",
                 ),
-                8,
+                6,
+                4,
+            ),
+            (
+                stat(
+                    "Last upload",
+                    LAST_UPLOAD,
+                    unit="s",
+                    description="Time since the last upload to R2. Litestream uploads only "
+                    "when data changes, so a quiet site shows a large value. "
+                    "No value: no upload in 3 h.",
+                ),
+                6,
                 4,
             ),
             (
@@ -449,22 +462,22 @@ backups = dashboard(
                     steps=thresholds((None, "green"), (0.5, "red")),
                     decimals=0,
                 ),
-                8,
+                6,
                 4,
             ),
             (
                 stat("Database size", "max(litestream_db_size)", unit="bytes"),
-                8,
+                6,
                 4,
             ),
         ],
         [
             (
                 timeseries(
-                    "Upload age",
-                    [target(AGE, "age")],
+                    "Backup lag",
+                    [target(LAG, "lag")],
                     unit="s",
-                    description="Litestream lag to R2. The BackupStale alert fires above 75 min.",
+                    description="Litestream lag to R2. The BackupStale alert fires above 15 min.",
                 ),
                 12,
                 8,

@@ -1,12 +1,13 @@
 # promtool unit tests for prometheus/rules/backup.yml. Run: infra/obs/check.sh
+# Series step is 30 s. `5x20` is 21 samples (0 s to 600 s), so a change in the next
+# value lands at 630 s.
 rule_files:
   - ../prometheus/rules/backup.yml
 
 evaluation_interval: 30s
 
 tests:
-  # `5x20` is 21 samples, so the one upload lands at 10m30s (630 s). The rule holds 630
-  # until the 3 h window passes it.
+  # Last upload time holds 630 until the 3 h window passes it.
   - interval: 30s
     input_series:
       - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
@@ -33,38 +34,98 @@ tests:
         eval_time: 30m
         exp_samples: []
 
-  # Age counts from the last upload when one exists.
+  # A write uploaded in the same scrape: lag 0.
   - interval: 30s
-    input_series:
-      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+    input_series: &uploaded
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
         values: '5x20 6x400'
-      - series: 'process_start_time_seconds{job="litestream",lxc="app",instance="a:9090"}'
-        values: '0x420'
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '3x20 4x400'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x420'
     promql_expr_test:
-      - expr: portfolio:litestream_backup_age_seconds
+      - expr: portfolio:litestream_last_change_timestamp_seconds
         eval_time: 1h
         exp_samples:
-          - labels: 'portfolio:litestream_backup_age_seconds{job="litestream",lxc="app"}'
+          - labels: 'portfolio:litestream_last_change_timestamp_seconds{job="litestream",lxc="app"}'
+            value: 630
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_lag_seconds{job="litestream",lxc="app"}'
+            value: 0
+
+  # The upload lands one scrape after the write: lag 0.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
+        values: '5x20 6x400'
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '3x21 4x400'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x420'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_lag_seconds{job="litestream",lxc="app"}'
+            value: 0
+
+  # A write with no upload after it: lag counts from the write. 3600 - 630 = 2970.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
+        values: '5x20 6x400'
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '3x420'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x420'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_lag_seconds{job="litestream",lxc="app"}'
             value: 2970
 
-  # No upload since the start: age counts from the process start (60 s here).
+  # An older write was uploaded, a newer one was not: lag counts from the newer write.
+  # Writes at 630 s and 1230 s. Upload only at 630 s. 3600 - 1230 = 2370.
   - interval: 30s
     input_series:
-      - series: 'process_start_time_seconds{job="litestream",lxc="app",instance="a:9090"}'
-        values: '60x200'
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
+        values: '5x20 6x19 7x400'
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '3x20 4x400'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x440'
     promql_expr_test:
-      - expr: portfolio:litestream_backup_age_seconds
-        eval_time: 30m
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h
         exp_samples:
-          - labels: 'portfolio:litestream_backup_age_seconds{job="litestream",lxc="app"}'
-            value: 1740
+          - labels: 'portfolio:litestream_backup_lag_seconds{job="litestream",lxc="app"}'
+            value: 2370
 
-  # Litestream down: no series, so the alert treats it as stale.
+  # No write and no upload in 3 h, Litestream up: nothing to back up, lag 0.
   - interval: 30s
     input_series:
-      - series: 'up{job="litestream"}'
-        values: '0x100'
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
+        values: '49x200'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x200'
     promql_expr_test:
-      - expr: portfolio:litestream_backup_age_seconds
-        eval_time: 30m
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h30m
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_lag_seconds{job="litestream",lxc="app"}'
+            value: 0
+
+  # Litestream down: no lag series, so the alert treats it as stale.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_txid{job="litestream",lxc="app",db="/data/portfolio.db"}'
+        values: '49x60 _x140'
+      - series: 'up{job="litestream",lxc="app",instance="a:9090"}'
+        values: '1x60 0x140'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_lag_seconds
+        eval_time: 1h
         exp_samples: []

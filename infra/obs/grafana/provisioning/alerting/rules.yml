@@ -66,7 +66,8 @@ groups:
           summary: The contact form had a server-side error in the last 10 minutes. Check the API log.
         dashboardUid: site-overview
 
-      # Litestream snapshots every hour. 75 min gives 15 min of grace past one interval.
+      # Backup lag: how long the newest database change has waited without an upload to R2.
+      # Litestream syncs every second, so a healthy lag is 0. 15 min leaves room for an R2 outage.
       # No data: Litestream is down or not scraped. That counts as stale.
       - uid: backup-stale
         title: BackupStale
@@ -77,7 +78,7 @@ groups:
             datasourceUid: prometheus
             model:
               refId: A
-              expr: max(portfolio:litestream_backup_age_seconds)
+              expr: max(portfolio:litestream_backup_lag_seconds)
               instant: true
           - refId: B
             datasourceUid: __expr__
@@ -86,13 +87,13 @@ groups:
               type: threshold
               expression: A
               conditions:
-                - evaluator: { type: gt, params: [4500] }
+                - evaluator: { type: gt, params: [900] }
         for: 5m
         noDataState: Alerting
         execErrState: Error
         labels: { severity: page }
         annotations:
-          summary: The last SQLite backup upload to R2 is older than 75 minutes.
+          summary: A database change has waited over 15 minutes for its backup to R2, or Litestream is down.
         dashboardUid: backups
 
       # Host root disk and every Proxmox storage.

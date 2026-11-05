@@ -17,8 +17,8 @@
   "panels": [
     {
       "type": "stat",
-      "title": "Last upload age",
-      "description": "Time since the last Litestream upload to R2. Before the first upload after a Litestream start, time since that start.",
+      "title": "Backup lag",
+      "description": "How long the newest database change has waited without an upload to R2. 0: the backup is current. No value: Litestream is down.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -30,7 +30,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(portfolio:litestream_backup_age_seconds)",
+          "expr": "max(portfolio:litestream_backup_lag_seconds)",
           "legendFormat": "__auto",
           "instant": true,
           "range": false
@@ -47,11 +47,11 @@
                 "color": "green"
               },
               {
-                "value": 3600,
+                "value": 300,
                 "color": "orange"
               },
               {
-                "value": 4500,
+                "value": 900,
                 "color": "red"
               }
             ]
@@ -80,7 +80,68 @@
       "gridPos": {
         "x": 0,
         "y": 0,
-        "w": 8,
+        "w": 6,
+        "h": 4
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Last upload",
+      "description": "Time since the last upload to R2. Litestream uploads only when data changes, so a quiet site shows a large value. No value: no upload in 3 h.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "time() - max(portfolio:litestream_last_upload_timestamp_seconds)",
+          "legendFormat": "__auto",
+          "instant": true,
+          "range": false
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "auto",
+        "justifyMode": "auto",
+        "orientation": "auto"
+      },
+      "id": 2,
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
         "h": 4
       }
     },
@@ -142,11 +203,11 @@
         "justifyMode": "auto",
         "orientation": "auto"
       },
-      "id": 2,
+      "id": 3,
       "gridPos": {
-        "x": 8,
+        "x": 12,
         "y": 0,
-        "w": 8,
+        "w": 6,
         "h": 4
       }
     },
@@ -203,18 +264,18 @@
         "justifyMode": "auto",
         "orientation": "auto"
       },
-      "id": 3,
+      "id": 4,
       "gridPos": {
-        "x": 16,
+        "x": 18,
         "y": 0,
-        "w": 8,
+        "w": 6,
         "h": 4
       }
     },
     {
       "type": "timeseries",
-      "title": "Upload age",
-      "description": "Litestream lag to R2. The BackupStale alert fires above 75 min.",
+      "title": "Backup lag",
+      "description": "Litestream lag to R2. The BackupStale alert fires above 15 min.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -226,8 +287,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max(portfolio:litestream_backup_age_seconds)",
-          "legendFormat": "age",
+          "expr": "max(portfolio:litestream_backup_lag_seconds)",
+          "legendFormat": "lag",
           "instant": false,
           "range": true
         }
@@ -258,7 +319,7 @@
           "sort": "desc"
         }
       },
-      "id": 4,
+      "id": 5,
       "gridPos": {
         "x": 0,
         "y": 4,
@@ -313,7 +374,7 @@
           "sort": "desc"
         }
       },
-      "id": 5,
+      "id": 6,
       "gridPos": {
         "x": 12,
         "y": 4,
@@ -368,7 +429,7 @@
           "sort": "desc"
         }
       },
-      "id": 6,
+      "id": 7,
       "gridPos": {
         "x": 0,
         "y": 12,
@@ -423,7 +484,7 @@
           "sort": "desc"
         }
       },
-      "id": 7,
+      "id": 8,
       "gridPos": {
         "x": 12,
         "y": 12,

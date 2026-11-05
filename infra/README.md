@@ -69,7 +69,7 @@ pct exec 202 -- docker compose -f /opt/portfolio/infra/app/docker-compose.yml lo
 | Replica | R2 bucket `portfolio-backup`, prefix `portfolio/` |
 | Snapshots | Every 1 h, kept 7 days. WAL changes sync about every 1 s. |
 | Keys | `app/.env.litestream`. R2 token scoped to the backup bucket only. Guide: `docs/guide/t6-r2-backup.md`. |
-| Metrics | `192.168.0.151:9090/metrics` on the LAN. Prometheus scrapes it. Last upload time: recording rule `portfolio:litestream_last_upload_timestamp_seconds`. |
+| Metrics | `192.168.0.151:9090/metrics` on the LAN. Prometheus scrapes it. Recording rules: `portfolio:litestream_backup_lag_seconds` (0 when current) and `portfolio:litestream_last_upload_timestamp_seconds`. |
 
 Litestream keeps its state in `/var/lib/portfolio/data/.portfolio.db-litestream/`. Never remove it while the stack runs.
 
@@ -167,11 +167,11 @@ Login: Access sends its JWT in `Cf-Access-Jwt-Assertion`. Grafana checks the sig
 |---|---|---|
 | `SiteDown` | `/api/health` probe fails for 3 min, or the probe series is gone | Telegram and email |
 | `ContactErrors` | `portfolio_contact_errors_total` rises in 10 min | Telegram and email |
-| `BackupStale` | `portfolio:litestream_backup_age_seconds` above 75 min for 5 min, or absent | Telegram and email |
+| `BackupStale` | `portfolio:litestream_backup_lag_seconds` above 15 min for 5 min, or absent | Telegram and email |
 | `DiskHigh` | A host disk or Proxmox storage above 85% for 15 min | Telegram and email |
 | `NewLead` | `portfolio_leads_total` rises | Telegram only, no resolve message |
 
-`BackupStale` uses 75 min, not the spec's 1 hour. Litestream snapshots every hour, so a 1 hour limit fires on every normal cycle. Email goes through Resend SMTP from `alerts@fatihiazmi.dev`. Keys: [`docs/guide/t21-grafana-alerts.md`](../docs/guide/t21-grafana-alerts.md).
+`BackupStale` watches backup lag, not snapshot age as in spec 7a.4. Litestream 0.5 uploads only when data changes. On a quiet site the last upload gets old while the backup stays current. Lag is how long the newest change has waited for an upload. Rules: `prometheus/rules/backup.yml`. Email goes through Resend SMTP from `alerts@fatihiazmi.dev`. Keys: [`docs/guide/t21-grafana-alerts.md`](../docs/guide/t21-grafana-alerts.md).
 
 ### Proxmox token
 
