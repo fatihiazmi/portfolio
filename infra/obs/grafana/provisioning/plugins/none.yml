@@ -1,0 +1,4 @@
+# No plugins. The stack uses the built-in Prometheus data source only.
+# This directory exists so Grafana does not log an error at start.
+apiVersion: 1
+apps: []

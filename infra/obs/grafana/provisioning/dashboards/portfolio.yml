@@ -1,0 +1,11 @@
+# Dashboard provider. Spec 7a.2, plan T21. JSON comes from grafana/build_dashboards.py.
+apiVersion: 1
+
+providers:
+  - name: portfolio
+    folder: Portfolio
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

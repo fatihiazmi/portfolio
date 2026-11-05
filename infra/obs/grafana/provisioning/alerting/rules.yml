@@ -1,0 +1,155 @@
+# Alert rules. Spec 7a.4, plan T21.
+# Each rule: query A on Prometheus (instant), then threshold B. B is the condition.
+# Severity `page` goes to Telegram and email. `info` goes to Telegram only.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: portfolio
+    folder: Portfolio
+    interval: 1m
+    rules:
+      # The blackbox probe of /api/health runs every 60 s. 3 min is 3 failed probes.
+      # No data means the probe series is gone, so that counts as down too.
+      - uid: site-down
+        title: SiteDown
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: min(probe_success{probe="api_health"})
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: lt, params: [1] }
+        for: 3m
+        noDataState: Alerting
+        execErrState: Error
+        labels: { severity: page }
+        annotations:
+          summary: https://api.fatihiazmi.dev/api/health has failed from the internet for 3 minutes.
+        dashboardUid: site-overview
+
+      - uid: contact-errors
+        title: ContactErrors
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: sum(increase(portfolio_contact_errors_total[10m]))
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        for: 0s
+        # No data: the API is down. SiteDown covers that.
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: page }
+        annotations:
+          summary: The contact form had a server-side error in the last 10 minutes. Check the API log.
+        dashboardUid: site-overview
+
+      # Litestream snapshots every hour. 75 min gives 15 min of grace past one interval.
+      # No data: Litestream is down or not scraped. That counts as stale.
+      - uid: backup-stale
+        title: BackupStale
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: max(portfolio:litestream_backup_age_seconds)
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [4500] }
+        for: 5m
+        noDataState: Alerting
+        execErrState: Error
+        labels: { severity: page }
+        annotations:
+          summary: The last SQLite backup upload to R2 is older than 75 minutes.
+        dashboardUid: backups
+
+      # Host root disk and every Proxmox storage.
+      - uid: disk-high
+        title: DiskHigh
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: >
+                max(pve_disk_usage_bytes{id=~"node/.+|storage/.+"}
+                / pve_disk_size_bytes{id=~"node/.+|storage/.+"})
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator: { type: gt, params: [0.85] }
+        for: 15m
+        noDataState: OK
+        execErrState: Error
+        labels: { severity: page }
+        annotations:
+          summary: A Proxmox host disk or storage is above 85% full.
+        dashboardUid: homelab
+
+      # Informational. A counter reset after an API restart is not a lead.
+      - uid: new-lead
+        title: NewLead
+        condition: B
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              expr: sum(increase(portfolio_leads_total[2m]))
+              instant: true
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: threshold
+              expression: A
+              conditions:
+                # increase() extrapolates, so one lead can read as 0.9 or 1.1.
+                - evaluator: { type: gt, params: [0.5] }
+        for: 0s
+        noDataState: OK
+        execErrState: OK
+        labels: { severity: info }
+        annotations:
+          summary: A new lead arrived. Open the admin Leads screen.
+        dashboardUid: site-overview

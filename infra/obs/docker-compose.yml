@@ -5,6 +5,9 @@
 # Prometheus publishes on ${PROM_BIND}. Set it in ./.env to the LXC LAN address, so the API
 # on the `app` LXC can query it for /stack (T22). Unset: loopback only.
 # Prometheus never goes through a tunnel. Spec section 7.
+#
+# Grafana (T21) binds to loopback on the LXC. Outside access goes through the `obs` tunnel
+# to grafana.fatihiazmi.dev, behind Cloudflare Access. Guide: docs/guide/t21-grafana-alerts.md
 name: obs
 
 services:
@@ -18,13 +21,14 @@ services:
       - --storage.tsdb.retention.time=7d
       - --storage.tsdb.retention.size=4GB
     environment:
-      GOMEMLIMIT: 200MiB
+      GOMEMLIMIT: 150MiB
     volumes:
       - ./prometheus:/etc/prometheus:ro
       - prometheus-data:/prometheus
     ports:
       - "${PROM_BIND:-127.0.0.1}:9090:9090"
-    mem_limit: 256m
+    # About 45 MB in use at 2,800 series (2026-11-05).
+    mem_limit: 192m
     logging: &logging
       driver: json-file
       options:
@@ -57,5 +61,73 @@ services:
     mem_limit: 32m
     logging: *logging
 
+  # Dashboards, data source, and alerts all load from ./grafana at start. Spec 7a.2.
+  # Nothing is created by hand in the UI: provisioned items are read-only there.
+  grafana:
+    image: grafana/grafana:13.2.4
+    restart: unless-stopped
+    depends_on: [prometheus]
+    environment:
+      GOMEMLIMIT: 280MiB
+      GF_SERVER_ROOT_URL: https://grafana.fatihiazmi.dev
+      GF_SECURITY_ADMIN_USER: admin
+      # Break-glass login on the LAN or through `pct exec`. Normal login is the Access JWT.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in infra/obs/.env}
+      GF_SECURITY_COOKIE_SECURE: "true"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      # No plugin downloads at start. The stack needs the built-in Prometheus plugin only.
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      # Single sign-on from Cloudflare Access. Access sends its signed JWT in this header.
+      # Grafana checks the signature, the issuer, and the audience of the Access app.
+      GF_AUTH_JWT_ENABLED: "true"
+      GF_AUTH_JWT_HEADER_NAME: Cf-Access-Jwt-Assertion
+      GF_AUTH_JWT_JWK_SET_URL: https://${CF_ACCESS_TEAM_DOMAIN:?set CF_ACCESS_TEAM_DOMAIN in infra/obs/.env}/cdn-cgi/access/certs
+      GF_AUTH_JWT_CACHE_TTL: 60m
+      GF_AUTH_JWT_EXPECT_CLAIMS: '{"iss": "https://${CF_ACCESS_TEAM_DOMAIN}", "aud": ["${GRAFANA_ACCESS_AUD:?set GRAFANA_ACCESS_AUD in infra/obs/.env}"]}'
+      GF_AUTH_JWT_EMAIL_CLAIM: email
+      GF_AUTH_JWT_USERNAME_CLAIM: email
+      GF_AUTH_JWT_AUTO_SIGN_UP: "true"
+      GF_AUTH_JWT_ROLE_ATTRIBUTE_PATH: "email == '${ADMIN_EMAIL:?set ADMIN_EMAIL in infra/obs/.env}' && 'Admin' || 'None'"
+      GF_AUTH_JWT_ROLE_ATTRIBUTE_STRICT: "true"
+      # Alert email through Resend SMTP. Sender on the Resend-verified domain.
+      GF_SMTP_ENABLED: "true"
+      GF_SMTP_HOST: smtp.resend.com:587
+      GF_SMTP_USER: resend
+      GF_SMTP_PASSWORD: ${RESEND_API_KEY:?set RESEND_API_KEY in infra/obs/.env}
+      GF_SMTP_FROM_ADDRESS: alerts@fatihiazmi.dev
+      GF_SMTP_FROM_NAME: fatihiazmi.dev alerts
+      # Read by grafana/provisioning/alerting/contact-points.yml.
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in infra/obs/.env}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID in infra/obs/.env}
+      ALERT_EMAIL: ${ALERT_EMAIL:?set ALERT_EMAIL in infra/obs/.env}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    # Grafana 13 holds about 135 MB of Go heap and 300 MB resident at idle (2026-11-05).
+    # The memory limits of all services add up to the 768 MB of the LXC.
+    mem_limit: 384m
+    logging: *logging
+
+  # Tunnel `obs`: grafana.fatihiazmi.dev -> http://grafana:3000. Separate from the `app`
+  # tunnel, so Grafana stays reachable when the `app` LXC is down.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.10.7
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --metrics 0.0.0.0:2000 run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:?set CLOUDFLARED_TUNNEL_TOKEN in infra/obs/.env}
+    depends_on: [grafana]
+    mem_limit: 64m
+    logging: *logging
+
 volumes:
   prometheus-data:
+  grafana-data:

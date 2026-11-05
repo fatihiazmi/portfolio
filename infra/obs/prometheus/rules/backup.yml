@@ -6,7 +6,13 @@
 # upload", so the `BackupStale` alert (T21), /stack (T22), and the admin summary can read it.
 #
 # The subquery looks back 3 hours. With no upload in that window the series is absent.
-# Treat absent as stale.
+#
+# Litestream creates the counter series at its first upload after a start. Until then
+# `portfolio:litestream_backup_age_seconds` counts from the Litestream process start.
+# Litestream down: both series are absent. Treat absent as stale.
+# Known limit: with no upload in the 3 h window, the age is the time since the Litestream
+# start, not the true age. An old start overstates it. A recent restart understates it,
+# so `BackupStale` fires up to 75 min late after a restart.
 groups:
   - name: backup
     rules:
@@ -16,4 +22,10 @@ groups:
             max_over_time(
               (timestamp(increase(litestream_replica_operation_total{operation="PUT"}[1m]) > 0))[3h:30s]
             )
+          )
+      - record: portfolio:litestream_backup_age_seconds
+        expr: >
+          time() - (
+            portfolio:litestream_last_upload_timestamp_seconds
+            or max by (job, lxc) (process_start_time_seconds{job="litestream"})
           )

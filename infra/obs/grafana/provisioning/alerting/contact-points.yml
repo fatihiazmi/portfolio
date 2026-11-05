@@ -1,0 +1,45 @@
+# Alert contact points. Spec 7a.4, plan T21.
+# Values in $VARS come from infra/obs/.env through compose. Grafana expands them at load.
+# Every alert goes to Telegram and to email. Email is the backup when Telegram is down.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: owner
+    receivers:
+      - uid: owner-telegram
+        type: telegram
+        settings:
+          bottoken: $TELEGRAM_BOT_TOKEN
+          chatid: $TELEGRAM_CHAT_ID
+          parse_mode: HTML
+          message: '{{ template "portfolio.telegram" . }}'
+      - uid: owner-email
+        type: email
+        settings:
+          addresses: $ALERT_EMAIL
+          singleEmail: true
+
+  # Informational alerts (`NewLead`): Telegram only, and no "resolved" message.
+  - orgId: 1
+    name: owner-info
+    receivers:
+      - uid: owner-info-telegram
+        type: telegram
+        disableResolveMessage: true
+        settings:
+          bottoken: $TELEGRAM_BOT_TOKEN
+          chatid: $TELEGRAM_CHAT_ID
+          parse_mode: HTML
+          message: '{{ template "portfolio.telegram" . }}'
+
+templates:
+  - orgId: 1
+    name: portfolio
+    template: |
+      {{ define "portfolio.telegram" -}}
+      {{ range .Alerts -}}
+      {{ if eq .Status "firing" }}🔴{{ else }}✅{{ end }} <b>{{ .Labels.alertname }}</b> {{ .Status }}
+      {{ .Annotations.summary }}
+      {{ end -}}
+      {{- end }}

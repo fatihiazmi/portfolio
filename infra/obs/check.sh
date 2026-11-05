@@ -1,5 +1,6 @@
 #!/bin/sh
-# Check the Prometheus config and rules, and run the rule unit tests. Plan T20.
+# Check the Prometheus config and rules, run the rule unit tests, and check that the
+# Grafana dashboard JSON matches its generator. Plans T20, T21.
 # Needs Docker. Run from anywhere: infra/obs/check.sh
 set -eu
 cd "$(dirname "$0")"
@@ -9,3 +10,5 @@ run() { docker run --rm --entrypoint promtool -v "$PWD:/obs:ro" -w /obs "$img" "
 run check config --syntax-only prometheus/prometheus.yml
 run check rules prometheus/rules/*.yml
 run test rules tests/*.test.yml
+python3 grafana/build_dashboards.py --check
+echo "dashboards: in sync"

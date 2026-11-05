@@ -32,3 +32,39 @@ tests:
       - expr: portfolio:litestream_last_upload_timestamp_seconds
         eval_time: 30m
         exp_samples: []
+
+  # Age counts from the last upload when one exists.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '5x20 6x400'
+      - series: 'process_start_time_seconds{job="litestream",lxc="app",instance="a:9090"}'
+        values: '0x420'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_age_seconds
+        eval_time: 1h
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_age_seconds{job="litestream",lxc="app"}'
+            value: 2970
+
+  # No upload since the start: age counts from the process start (60 s here).
+  - interval: 30s
+    input_series:
+      - series: 'process_start_time_seconds{job="litestream",lxc="app",instance="a:9090"}'
+        values: '60x200'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_age_seconds
+        eval_time: 30m
+        exp_samples:
+          - labels: 'portfolio:litestream_backup_age_seconds{job="litestream",lxc="app"}'
+            value: 1740
+
+  # Litestream down: no series, so the alert treats it as stale.
+  - interval: 30s
+    input_series:
+      - series: 'up{job="litestream"}'
+        values: '0x100'
+    promql_expr_test:
+      - expr: portfolio:litestream_backup_age_seconds
+        eval_time: 30m
+        exp_samples: []

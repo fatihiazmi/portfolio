@@ -1,0 +1,17 @@
+# Grafana data source. Spec 7a.2, plan T21.
+apiVersion: 1
+
+prune: true
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # Matches the Prometheus scrape interval, so $__rate_interval covers 4 scrapes.
+      timeInterval: 30s
+      httpMethod: POST
