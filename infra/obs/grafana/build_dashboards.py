@@ -79,6 +79,7 @@ def timeseries(
     unit: str = "short",
     description: str = "",
     max_value: float | None = None,
+    soft_max: float | None = None,
 ) -> dict:
     defaults: dict = {
         "unit": unit,
@@ -88,6 +89,9 @@ def timeseries(
     }
     if max_value is not None:
         defaults["max"] = max_value
+    # Axis top when every value is lower. Higher values still extend the axis.
+    if soft_max is not None:
+        defaults["custom"]["axisSoftMax"] = soft_max
     return {
         "type": "timeseries",
         "title": title,
@@ -281,6 +285,8 @@ site = dashboard(
                         )
                     ],
                     unit="percentunit",
+                    # All-zero data otherwise gets a 0-100 axis, shown as 0-10000%.
+                    soft_max=0.01,
                 ),
                 12,
                 8,

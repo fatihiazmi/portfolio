@@ -444,7 +444,8 @@
           "custom": {
             "fillOpacity": 10,
             "lineWidth": 1,
-            "showPoints": "never"
+            "showPoints": "never",
+            "axisSoftMax": 0.01
           },
           "color": {
             "mode": "palette-classic"
