@@ -22,7 +22,7 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T12 | 7 | Map fallbacks and performance: reduced-motion static frame, no-WebGL SVG, mobile DPR cap, `client:visible` load. | T11 | 3D island under 300 KB gzipped. Both fallbacks render. | done |
 | T13 | 8 | Case study page `/work/[slug]` per spec section 5. `/resume` page with PDF link. `/404` "road closed" page. | T8 | One seeded project renders every template section. | done |
 | T14 | 8 | Admin auth: Cloudflare Access apps for `/admin*` and `/api/admin*`. FastAPI middleware checks the Access JWT and the `X-Requested-With: admin` header on writes. | T5 | Requests without login get 403. Tests cover a missing JWT, a bad JWT, and a write without the header. | done |
-| T15 | 8 | **Owner input:** outcome numbers and 3–6 scrubbed screenshots for each of SiMS, NADI, and OTMS. One SVG architecture diagram each, drafted with Claude. | — | Files are in a local `content/` directory, outside git. | todo |
+| T15 | 8 | **Owner input:** outcome numbers and 3–6 scrubbed screenshots for each of SiMS, NADI, and OTMS. One SVG architecture diagram each, drafted with Claude. | — | Files are in a local `content/` directory, outside git. | v2 |
 | T16 | 9 | Admin JSON API per spec section 9.2: projects, order, edges, R2 image upload, leads, summary, publish with scrub gate and deploy hook. | T7, T14 | Tests cover every endpoint. Publish returns 409 with unscrubbed image IDs. | done |
 | T17 | 9–10 | Vue admin SPA with PrimeVue: Dashboard, Projects with markdown preview and drag reorder, Images, Leads. Build into `api/static/admin`. | T16 | The owner edits a project, uploads an image, and publishes through the UI. | done |
 | T18 | 10 | Vue map editor: 2D SVG grid, drag nodes to set `map_x` and `map_z`, click two nodes to toggle an edge. | T17 | Positions and edges saved in the editor show on the live 3D map after publish. | done |
@@ -33,7 +33,7 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T23 | 13 | Homelab Platform: make `infra/` public with a full secrets scan. Write the case study with Grafana screenshots and one restore or outage drill. Publish as the 7th node. | T19, T21, T22 | Node and case study live. Secret scan on the public repo is clean. | done |
 | T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | done |
 | T25 | 14–15 | Fix the failures found in T24. | T24 | Every T24 failure is resolved or moved to v2 with a written reason. | done |
-| T26 | 15 | Launch: save a fresh `projects.snapshot.json` in the repo. Final publish. **Owner:** post the link on LinkedIn and send it to warm contacts. | T25 | Site live on the domain on 2026-11-18. | todo |
+| T26 | 15 | Launch: save a fresh `projects.snapshot.json` in the repo. Final publish. **Owner:** post the link on LinkedIn and send it to warm contacts. | T25 | Site live on the domain on 2026-11-18. | in progress |
 
 ### T24 results and T25 fix list
 
@@ -70,6 +70,12 @@ T25 results, deployed `d185909` on 2026-11-05:
 | F1 | resolved | `67eb680` | Software WebGL (SwiftShader, llvmpipe) keeps the SVG map. Live Lighthouse mobile: 99, 99, 99. TBT 0 ms. A hardware GPU name still loads the 3D scene. Reduced motion with a hardware GPU still draws one frame. |
 | F2 | resolved | `d185909` | Spec 12 now says the edge redirects to the Access login, and the origin returns 403. |
 | F3 | resolved | `45b0ca0` | Probe every 30 s, `group_wait` 0s, `for` stays 3 min. Worst case about 4.5 min. Stop test: `pct stop 202` 08:18:54Z, sent 08:22:28Z, 3 min 34 s. |
+
+### Launch decisions (2026-11-05)
+
+- Launch moved up from 2026-11-18 to 2026-11-05. Owner's choice after T25.
+- T15 outcome numbers move to v2. The owner launches without them. The SiMS, NADI, and OTMS pages leave out user counts, sites, and volumes. Screenshots and diagrams from T15 shipped in T19.
+- Open questions per case study stay in `content/<slug>/case-study.md` under `owner_questions`.
 
 ### Tracking rules
 
