@@ -49,6 +49,9 @@ class Settings(BaseSettings):
     # Never route this port through the tunnel. Compose publishes it on the LAN only.
     metrics_port: int = 0
     metrics_host: str = "0.0.0.0"  # noqa: S104 - inside the container. Compose limits the host side.
+    # Prometheus on the `obs` LXC, for example `http://192.168.0.152:9090`. Spec section 7.
+    # Empty: `/api/stack` returns 503 and the admin summary has no `last_backup_at`.
+    prometheus_url: str = ""
 
     @property
     def images_ready(self) -> bool:

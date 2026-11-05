@@ -121,6 +121,8 @@ Plan T20. Each port publishes on `METRICS_BIND` from `app/.env`, set to `192.168
 
 The tunnel routes `api:8000` only. No metrics port goes through it.
 
+The API also reads Prometheus for `/api/stack` (plan T22). `PROMETHEUS_URL` in `app/.env` is `http://192.168.0.152:9090`. The `obs` stack publishes Prometheus on `PROM_BIND`, the `obs` LAN address.
+
 ## `obs` LXC
 
 | Setting | Value |

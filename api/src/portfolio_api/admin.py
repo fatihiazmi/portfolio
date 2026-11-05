@@ -21,7 +21,9 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from portfolio_api import stack
 from portfolio_api.config import Settings
+from portfolio_api.prometheus import Prometheus, PrometheusDown
 
 log = logging.getLogger("portfolio_api.admin")
 
@@ -59,9 +61,8 @@ class Summary(BaseModel):
     # Unscrubbed images on published projects. Above 0, publish returns 409.
     blocking_images: int
     last_publish: Publish | None
-    # Time of the last Litestream upload to R2. Prometheus records it as
-    # `portfolio:litestream_last_upload_timestamp_seconds` (T20). The API reads it once it
-    # has a Prometheus client in T22. Null until then.
+    # Time of the last Litestream upload to R2 in the last 7 days, from Prometheus.
+    # Null: no upload in that window, `PROMETHEUS_URL` unset, or Prometheus down.
     last_backup_at: str | None
 
 
@@ -124,6 +125,18 @@ def me(request: Request) -> Me:
     return Me(email=request.state.admin_email)
 
 
+def _last_backup_at(request: Request) -> str | None:
+    prom: Prometheus | None = request.app.state.prometheus
+    if prom is None:
+        return None
+    try:
+        ts = prom.instant(stack.INSTANT["last_upload"])
+    except PrometheusDown as e:
+        log.warning("summary: prometheus down: %s", e)
+        return None
+    return None if ts is None else datetime.fromtimestamp(ts, UTC).isoformat(timespec="seconds")
+
+
 @router.get("/summary", response_model=Summary)
 def summary(request: Request) -> Summary:
     """Dashboard numbers."""
@@ -138,7 +151,7 @@ def summary(request: Request) -> Summary:
         projects=ProjectCounts(total=projects[0], published=projects[1]),
         blocking_images=len(_blocking_images(conn)),
         last_publish=_publish(last) if last else None,
-        last_backup_at=None,
+        last_backup_at=_last_backup_at(request),
     )
 
 

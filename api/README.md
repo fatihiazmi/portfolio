@@ -46,6 +46,7 @@ Settings load from env vars or `api/.env`. The full list is in [`/.env.example`]
 | `ADMIN_UI_DIR` | `api/static/admin` | Admin SPA build. No `index.html` there: `/admin/` returns 503. |
 | `METRICS_PORT` | `0` | Port for Prometheus `/metrics`. `0`: off. Compose sets `9464`. |
 | `METRICS_HOST` | `0.0.0.0` | Address the metrics server binds inside the container. |
+| `PROMETHEUS_URL` | empty | Prometheus on the `obs` LXC, `http://192.168.0.152:9090`. Empty: `/api/stack` returns 503, `last_backup_at` is null. |
 
 Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), [`docs/guide/t14-cloudflare-access.md`](../docs/guide/t14-cloudflare-access.md), [`docs/guide/t16-r2-images.md`](../docs/guide/t16-r2-images.md).
 
@@ -57,6 +58,7 @@ Key setup: [`docs/guide/t9-contact-keys.md`](../docs/guide/t9-contact-keys.md), 
 | GET | `/api/projects` | `{"projects": [...], "edges": [{"source", "target", "label"}]}`. Published projects only, in `sort_order`. |
 | GET | `/api/projects/{slug}` | One published project. 404 for an unknown slug and for a draft. |
 | POST | `/api/contact` | `{"ok": true}`. Stores a lead and emails the owner. Spec section 6. |
+| GET | `/api/stack` | Live numbers for the `/stack` page. Spec section 7. See [Stack](#stack). |
 
 Rules:
 
@@ -75,6 +77,28 @@ Rules:
 | `portfolio_http_request_duration_seconds` | histogram | `method`, `route`. Ends at the last response byte. Background tasks are excluded. |
 | `portfolio_leads_total` | counter | none. Count only, never lead content. |
 | `portfolio_contact_errors_total` | counter | `reason`: `not_configured`, `turnstile_unavailable`, `email_failed`. All start at 0. |
+
+## Stack
+
+`GET /api/stack` answers from Prometheus with the fixed queries in `src/portfolio_api/stack.py`. Spec section 7, plan T22.
+
+Rules:
+
+- The route takes no parameters. Visitors never send a query.
+- Every query aggregates to one series. `prometheus.py` drops all labels, so no host name or IP leaves the API. A query that returns more than one series logs an error and gives `null`.
+- One response is cached for 30 s and shared by every visitor. Browsers get `Cache-Control: no-store`, so an outage shows at once.
+- Prometheus down (network error, 3 s timeout, 5xx): 503 `{"detail": "metrics offline"}`. The error is cached for 30 s too.
+
+| Field | Source |
+|---|---|
+| `api_probe_up` | Blackbox probe of `/api/health` from the internet |
+| `availability.ratio` | Same probe, averaged over `window_days` (7). Spec 7 asks for 30 days. Prometheus keeps 7 on the 4 GB host. |
+| `tunnel_connections` | `cloudflared_tunnel_ha_connections` of the public tunnel. Healthy: 4. |
+| `backup.lag_seconds` | `portfolio:litestream_backup_lag_seconds`. 0: in sync. |
+| `backup.last_upload_at` | Last Litestream upload to R2 in 7 days. Null: no database change in that time. |
+| `host.cpu`, `host.memory`, `host.disk` | Proxmox host, `prometheus-pve-exporter`. Ratios, 0 to 1. |
+| `leads_total` | `COUNT(*)` on `leads` in SQLite. The `portfolio_leads_total` counter resets on every API restart, so it is not a total. |
+| `series` | 24 h, one point per 10 min, 145 points. `requests_per_hour` leaves out `/api/health`. `latency_p95_ms` keeps it. |
 
 ## Admin gate
 
