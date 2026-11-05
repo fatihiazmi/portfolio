@@ -30,10 +30,10 @@ Step 5 matters. A bot cannot message you until you message it first. Claude read
 
 A second tunnel keeps Grafana reachable when the `app` LXC is down. That is when you need Grafana most.
 
-1. `dash.cloudflare.com` → **Zero Trust** → **Networks** → **Tunnels** → **Create a tunnel**.
-2. Type: **Cloudflared**. Name: `obs`. **Save tunnel**.
-3. The install page shows a command with a long token after `--token`. Copy only the token. Skip the install: Docker runs cloudflared.
-4. **Next**. Add a public hostname:
+1. `dash.cloudflare.com` → **Networking** → **Tunnels** → **Create Tunnel**. The menu moved out of Zero Trust in 2026. The `portfolio` tunnel shows in the same list.
+2. Type: **Cloudflared**. Name: `obs`. Save.
+3. On the install page, pick **Docker**. The command ends with a long token after `--token`. Copy only the token. Never run the command: compose runs cloudflared.
+4. Continue to the route step. The dashboard calls it a public hostname, a published application, or a route. Add:
 
 | Field | Value |
 |---|---|
@@ -43,9 +43,10 @@ A second tunnel keeps Grafana reachable when the `app` LXC is down. That is when
 | Service type | `HTTP` |
 | URL | `grafana:3000` |
 
-5. **Save tunnel**.
+5. Save.
 
-The tunnel shows **Inactive** until step 4 starts cloudflared.
+The tunnel shows **Inactive** or **Down** until step 4 starts cloudflared.
+The route form matches the `portfolio` tunnel's route for `api.fatihiazmi.dev` → `api:8000`. Open it as an example.
 
 ## 3. Access application
 
