@@ -4,7 +4,7 @@
 |---|---|---|---|
 | `app/` | LXC 202 `portfolio-app` | API + cloudflared | T5 |
 | `app/litestream.yml` | LXC 202 `portfolio-app` | SQLite backup to R2 | T6 |
-| `obs/` | LXC `obs` | Prometheus, Grafana, exporters | T20, T21 |
+| `obs/` | LXC 203 `portfolio-obs` | Prometheus, exporters. Grafana in T21. | T20, T21 |
 
 ## `app` LXC
 
@@ -69,7 +69,7 @@ pct exec 202 -- docker compose -f /opt/portfolio/infra/app/docker-compose.yml lo
 | Replica | R2 bucket `portfolio-backup`, prefix `portfolio/` |
 | Snapshots | Every 1 h, kept 7 days. WAL changes sync about every 1 s. |
 | Keys | `app/.env.litestream`. R2 token scoped to the backup bucket only. Guide: `docs/guide/t6-r2-backup.md`. |
-| Metrics | `litestream:9090/metrics` on the compose network. Scraped in T20. |
+| Metrics | `192.168.0.151:9090/metrics` on the LAN. Prometheus scrapes it. Last upload time: recording rule `portfolio:litestream_last_upload_timestamp_seconds`. |
 
 Litestream keeps its state in `/var/lib/portfolio/data/.portfolio.db-litestream/`. Never remove it while the stack runs.
 
@@ -107,3 +107,80 @@ For a point in time, add `-timestamp 2026-11-05T10:00:00Z` before `/data/portfol
 | Date | Result |
 |---|---|
 | 2026-11-03 | Passed. Integrity `ok`. A lead written 5 s before the restore was present in the restored copy. |
+
+## Metrics on the `app` LXC
+
+Plan T20. Each port publishes on `METRICS_BIND` from `app/.env`, set to `192.168.0.151`. Unset: loopback only, and Prometheus cannot scrape.
+
+| Port | Source | Path |
+|---|---|---|
+| 9464 | API, `prometheus-client` | `/metrics` |
+| 9090 | Litestream | `/metrics` |
+| 2000 | cloudflared | `/metrics` |
+| 9100 | `node_exporter` service `node-exporter` | `/metrics` |
+
+The tunnel routes `api:8000` only. No metrics port goes through it.
+
+## `obs` LXC
+
+| Setting | Value |
+|---|---|
+| VMID / hostname | `203` / `portfolio-obs` |
+| Template | `debian-12-standard_12.12-1_amd64` |
+| Resources | 2 cores, 768 MB RAM, 512 MB swap, 20 GB on `local-lvm`. Lean limits, spec 7a.6. |
+| Mode | Unprivileged, `nesting=1,keyctl=1`, start on boot |
+| Network | `vmbr0`, `192.168.0.152/24`, gateway `192.168.0.1` |
+| Docker | `download.docker.com` apt repo, same as LXC 202 |
+| Repo checkout | `/opt/portfolio` |
+| Secrets | `/opt/portfolio/infra/obs/.env`, mode `600` |
+| Prometheus | `192.168.0.152:9090` on the LAN. Never through a tunnel. Data in volume `obs_prometheus-data`. |
+
+### Services
+
+| Service | Image | Memory limit | Job |
+|---|---|---|---|
+| `prometheus` | `prom/prometheus:v3.15.1` | 256 MB | Scrapes every 30 s. Keeps 7 days or 4 GB. |
+| `pve-exporter` | `prompve/prometheus-pve-exporter:3.10.1` | 96 MB | Proxmox host and guest metrics |
+| `blackbox` | `prom/blackbox-exporter:v0.29.1` | 32 MB | Probes `https://fatihiazmi.dev/` and `/api/health` every 60 s |
+
+### Proxmox token
+
+| Setting | Value |
+|---|---|
+| User | `prometheus@pve`, realm `pve`, no password |
+| ACL | `PVEAuditor` on `/` |
+| Token | `prometheus@pve!obs`, privilege separation off, so it has the user's read-only rights |
+| Stored | `infra/obs/.env` on LXC 203 only |
+
+Rotate the token from the Proxmox host shell:
+
+```bash
+pveum user token remove prometheus@pve obs
+pveum user token add prometheus@pve obs --privsep 0 --output-format json
+```
+
+Put the new `value` in the `PVE_TOKEN_VALUE=` line of `infra/obs/.env`. Then run `docker compose up -d pve-exporter` on LXC 203.
+
+### Deploy
+
+From the Proxmox host shell:
+
+```bash
+pct exec 203 -- bash -c 'cd /opt/portfolio && git pull --ff-only && cd infra/obs && docker compose up -d'
+```
+
+After a change to `prometheus.yml` or a rule file, reload without a restart:
+
+```bash
+pct exec 203 -- docker compose -f /opt/portfolio/infra/obs/docker-compose.yml kill -s HUP prometheus
+```
+
+### Check
+
+Before a commit, run `infra/obs/check.sh` locally. It runs `promtool` in Docker. It checks the config and the rules, and runs the rule tests in `infra/obs/tests/`.
+
+On the LXC, every target must show `up`:
+
+```bash
+pct exec 203 -- curl -s 'http://192.168.0.152:9090/api/v1/query?query=up'
+```

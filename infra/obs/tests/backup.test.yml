@@ -1,0 +1,34 @@
+# promtool unit tests for prometheus/rules/backup.yml. Run: infra/obs/check.sh
+rule_files:
+  - ../prometheus/rules/backup.yml
+
+evaluation_interval: 30s
+
+tests:
+  # `5x20` is 21 samples, so the one upload lands at 10m30s (630 s). The rule holds 630
+  # until the 3 h window passes it.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '5x20 6x400'
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="DELETE",replica_type="s3"}'
+        values: '0+1x420'
+    promql_expr_test:
+      - expr: portfolio:litestream_last_upload_timestamp_seconds
+        eval_time: 1h
+        exp_samples:
+          - labels: 'portfolio:litestream_last_upload_timestamp_seconds{job="litestream",lxc="app"}'
+            value: 630
+      - expr: portfolio:litestream_last_upload_timestamp_seconds
+        eval_time: 3h30m
+        exp_samples: []
+
+  # A Litestream restart resets the counter to 0. That is not an upload.
+  - interval: 30s
+    input_series:
+      - series: 'litestream_replica_operation_total{job="litestream",lxc="app",operation="PUT",replica_type="s3"}'
+        values: '5x20 0x100'
+    promql_expr_test:
+      - expr: portfolio:litestream_last_upload_timestamp_seconds
+        eval_time: 30m
+        exp_samples: []

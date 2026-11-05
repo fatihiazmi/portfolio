@@ -1,0 +1,73 @@
+# Prometheus for the `obs` LXC. Spec section 7a, plan T20.
+# LAN addresses: `app` LXC 192.168.0.151, Proxmox host 192.168.0.123.
+# Reload after a change: docker compose kill -s HUP prometheus
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # FastAPI /metrics on its own port. Spec 7a.1.
+  - job_name: api
+    static_configs:
+      - targets: ["192.168.0.151:9464"]
+        labels: { lxc: app }
+
+  - job_name: litestream
+    static_configs:
+      - targets: ["192.168.0.151:9090"]
+        labels: { lxc: app }
+
+  - job_name: cloudflared
+    static_configs:
+      - targets: ["192.168.0.151:2000"]
+        labels: { lxc: app }
+
+  - job_name: node
+    static_configs:
+      - targets: ["192.168.0.151:9100"]
+        labels: { lxc: app }
+
+  # Proxmox API through prometheus-pve-exporter. The target is the host, the exporter
+  # does the call. `cluster` and `node` turn on both collector groups.
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+      cluster: ["1"]
+      node: ["1"]
+    static_configs:
+      - targets: ["192.168.0.123"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: pve-exporter:9221
+
+  # Public URLs probed through the internet, every 60 s. Spec 7a.1.
+  - job_name: blackbox
+    scrape_interval: 60s
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["https://fatihiazmi.dev/"]
+        labels: { probe: site }
+      - targets: ["https://api.fatihiazmi.dev/api/health"]
+        labels: { probe: api_health }
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

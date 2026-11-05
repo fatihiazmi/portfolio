@@ -1,0 +1,61 @@
+# Stack for the `obs` LXC. Spec section 7a, plan T20.
+# Run from this directory: docker compose up -d
+# Secrets: ./.env (mode 600, never committed). Keys listed in /.env.example under "obs LXC".
+#
+# Prometheus publishes on ${PROM_BIND}. Set it in ./.env to the LXC LAN address, so the API
+# on the `app` LXC can query it for /stack (T22). Unset: loopback only.
+# Prometheus never goes through a tunnel. Spec section 7.
+name: obs
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.15.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Lean limits on the 4 GB host: 7 days. Spec 7a.6 raises it to 15 days after the RAM upgrade.
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.retention.size=4GB
+    environment:
+      GOMEMLIMIT: 200MiB
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROM_BIND:-127.0.0.1}:9090:9090"
+    mem_limit: 256m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Proxmox host and guest metrics. Read-only `PVEAuditor` token from ./.env.
+  pve-exporter:
+    image: prompve/prometheus-pve-exporter:3.10.1
+    init: true
+    restart: unless-stopped
+    environment:
+      PVE_USER: ${PVE_USER:?set PVE_USER in infra/obs/.env}
+      PVE_TOKEN_NAME: ${PVE_TOKEN_NAME:?set PVE_TOKEN_NAME in infra/obs/.env}
+      PVE_TOKEN_VALUE: ${PVE_TOKEN_VALUE:?set PVE_TOKEN_VALUE in infra/obs/.env}
+      # The Proxmox API uses its self-signed certificate. The exporter reaches it on the LAN only.
+      PVE_VERIFY_SSL: "false"
+    # No published port. Prometheus scrapes it on the compose network.
+    mem_limit: 96m
+    logging: *logging
+
+  # Probes the public site and /api/health through the internet. Spec 7a.1.
+  blackbox:
+    image: prom/blackbox-exporter:v0.29.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/blackbox/blackbox.yml
+    volumes:
+      - ./blackbox:/etc/blackbox:ro
+    mem_limit: 32m
+    logging: *logging
+
+volumes:
+  prometheus-data:

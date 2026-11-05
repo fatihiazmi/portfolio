@@ -1,6 +1,10 @@
 # Stack for the `app` LXC. Spec section 2.
 # Run from this directory: docker compose up -d --build
 # Secrets: ./.env (mode 600, never committed). Keys listed in /.env.example.
+#
+# Metrics ports (plan T20) publish on ${METRICS_BIND}. Set it in ./.env to the LXC LAN
+# address, so Prometheus on the `obs` LXC can scrape them. Unset: loopback only.
+# The tunnel routes `api:8000` only. No metrics port ever goes through it.
 name: portfolio
 
 services:
@@ -16,11 +20,13 @@ services:
     environment:
       DATABASE_PATH: /data/portfolio.db
       CORS_ORIGIN: ${CORS_ORIGIN:-https://fatihiazmi.dev}
+      METRICS_PORT: "9464"
     volumes:
       - /var/lib/portfolio/data:/data
-    # Loopback only. The tunnel reaches the API over the compose network.
+    # API on loopback only. The tunnel reaches it over the compose network.
     ports:
       - "127.0.0.1:8000:8000"
+      - "${METRICS_BIND:-127.0.0.1}:9464:9464"
     mem_limit: 192m
     logging: &logging
       driver: json-file
@@ -32,6 +38,8 @@ services:
     image: cloudflare/cloudflared:2026.10.7
     restart: unless-stopped
     command: tunnel --no-autoupdate --metrics 0.0.0.0:2000 run
+    ports:
+      - "${METRICS_BIND:-127.0.0.1}:2000:2000"
     environment:
       TUNNEL_TOKEN: ${CLOUDFLARED_TUNNEL_TOKEN:?set CLOUDFLARED_TUNNEL_TOKEN in infra/app/.env}
     depends_on:
@@ -54,9 +62,28 @@ services:
     volumes:
       - /var/lib/portfolio/data:/data
       - ./litestream.yml:/etc/litestream.yml:ro
+    ports:
+      - "${METRICS_BIND:-127.0.0.1}:9090:9090"
     # The API creates the database and turns on WAL before Litestream opens it.
     depends_on:
       api:
         condition: service_healthy
     mem_limit: 64m
+    logging: *logging
+
+  # Metrics for the `app` LXC itself: CPU, RAM, disk, network. Plan T20.
+  # Host network, so it reports the LXC interfaces, not the container's.
+  # Inside an unprivileged LXC, lxcfs gives it the LXC's own memory and CPU view.
+  node-exporter:
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    command:
+      - --path.rootfs=/host
+      - --web.listen-address=${METRICS_BIND:-127.0.0.1}:9100
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|run|sys|host/var/lib/docker/.+)($$|/)
+    volumes:
+      - /:/host:ro
+    mem_limit: 48m
     logging: *logging

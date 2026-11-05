@@ -3,7 +3,7 @@
 # Values in ${...} come from ./.env.litestream. Litestream expands them at load.
 # An unset variable expands to an empty string, and replication then fails at start.
 
-# Metrics for Prometheus (T20). Reachable on the compose network only.
+# Metrics for Prometheus (T20). Compose publishes the port on the LAN address only.
 addr: ":9090"
 
 # One full snapshot each hour. Keeps 7 days of point-in-time restore.

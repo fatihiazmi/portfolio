@@ -1,0 +1,19 @@
+# Backup recording rules. Plan T20.
+#
+# Litestream 0.5 exposes no "last snapshot" timestamp. It counts uploads to R2 in
+# `litestream_replica_operation_total{operation="PUT"}`. Each WAL sync with changes and
+# each hourly snapshot is one PUT. This rule turns the counter into "time of the last
+# upload", so the `BackupStale` alert (T21), /stack (T22), and the admin summary can read it.
+#
+# The subquery looks back 3 hours. With no upload in that window the series is absent.
+# Treat absent as stale.
+groups:
+  - name: backup
+    rules:
+      - record: portfolio:litestream_last_upload_timestamp_seconds
+        expr: >
+          max by (job, lxc) (
+            max_over_time(
+              (timestamp(increase(litestream_replica_operation_total{operation="PUT"}[1m]) > 0))[3h:30s]
+            )
+          )

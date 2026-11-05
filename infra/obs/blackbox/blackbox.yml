@@ -1,0 +1,12 @@
+# blackbox_exporter modules. Spec 7a.1, plan T20.
+modules:
+  # Public HTTPS URL answers 2xx. Used for the site and /api/health.
+  http_2xx:
+    prober: http
+    timeout: 10s
+    http:
+      preferred_ip_protocol: ip4
+      follow_redirects: true
+      fail_if_not_ssl: true
+      headers:
+        User-Agent: fatihiazmi.dev-uptime/1.0
