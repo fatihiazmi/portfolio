@@ -32,7 +32,7 @@ Sizing: about 4 focused hours per day. The owner's daily hours are unconfirmed. 
 | T22 | 12 | `/api/stack` with the PromQL allowlist. `/stack` page with live panels, 24 h charts, offline state, and the site architecture diagram. | T8, T20 | `/stack` shows live data, and it shows the offline state when the `app` LXC stops. | done |
 | T23 | 13 | Homelab Platform: make `infra/` public with a full secrets scan. Write the case study with Grafana screenshots and one restore or outage drill. Publish as the 7th node. | T19, T21, T22 | Node and case study live. Secret scan on the public repo is clean. | done |
 | T24 | 14 | Acceptance run: every check in spec section 12. Lighthouse mobile on `/`. Stop the `app` LXC and confirm the `SiteDown` alert. | T6, T9, T12, T18, T19, T23 | Every check passes, or each failure has a fix task in T25. | done |
-| T25 | 14–15 | Fix the failures found in T24. | T24 | Every T24 failure is resolved or moved to v2 with a written reason. | todo |
+| T25 | 14–15 | Fix the failures found in T24. | T24 | Every T24 failure is resolved or moved to v2 with a written reason. | done |
 | T26 | 15 | Launch: save a fresh `projects.snapshot.json` in the repo. Final publish. **Owner:** post the link on LinkedIn and send it to warm contacts. | T25 | Site live on the domain on 2026-11-18. | todo |
 
 ### T24 results and T25 fix list
@@ -62,6 +62,14 @@ Acceptance run on 2026-11-05 against spec section 12, deployed `b7e7995`.
 | F1 | Lighthouse mobile performance 67 on `/`, target 85. | `scene.*.js` draws every frame. Lab Chrome renders WebGL in software, so each frame costs about 150 ms. Total Blocking Time 4–8.6 s. The SVG fallback alone scores 99. | Stop the render loop when nothing moves, or start the 3D scene on first interaction on mobile. Re-run Lighthouse 3 times. |
 | F2 | Spec says 403 for `/admin` and `grafana.<domain>` without login. The edge returns 302 to the Access login. | Cloudflare Access redirects browsers to its login page. The origin still returns 403. | Change the spec 12 wording to "redirects to the Access login, and the origin returns 403". |
 | F3 | `SiteDown` worst case is about 5.5 min, over the 5 min target. The measured run took 4 min 37 s. | Probe 60 s + rule evaluation 60 s + `for: 3m` + `group_wait` 30 s. | Set `group_wait: 0s` for `SiteDown` and cut `for` to `2m30s`. Repeat the stop test. |
+
+T25 results, deployed `d185909` on 2026-11-05:
+
+| ID | Status | Commit | Evidence |
+|---|---|---|---|
+| F1 | resolved | `67eb680` | Software WebGL (SwiftShader, llvmpipe) keeps the SVG map. Live Lighthouse mobile: 99, 99, 99. TBT 0 ms. A hardware GPU name still loads the 3D scene. Reduced motion with a hardware GPU still draws one frame. |
+| F2 | resolved | `d185909` | Spec 12 now says the edge redirects to the Access login, and the origin returns 403. |
+| F3 | resolved | `45b0ca0` | Probe every 30 s, `group_wait` 0s, `for` stays 3 min. Worst case about 4.5 min. Stop test: `pct stop 202` 08:18:54Z, sent 08:22:28Z, 3 min 34 s. |
 
 ### Tracking rules
 
